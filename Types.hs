@@ -1,4 +1,5 @@
 module Types where
+import AbsHaskall
 import Values
 
 data VType =
@@ -9,4 +10,5 @@ data VType =
 typeValue (IntVal _)  = IntType
 typeValue (BoolVal _) = BoolType
 
-
+typeToken TInt = IntType
+typeToken TBool = BoolType

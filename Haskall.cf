@@ -11,6 +11,7 @@ TVoid. Type ::= "void" ;
 separator Exp "," ;
 
 EIf.     Exp  ::= "iff" Exp1 "then" Exp1 "else" Exp1 ;
+ELet.    Exp  ::= "let" [Decl] "in" Exp1 ;
 EEq.     Exp1 ::= Exp1 "==" Exp1 ;
 ELt.     Exp1 ::= Exp1 "<"  Exp1 ;
 EAdd.    Exp2 ::= Exp2 "+" Exp3 ;

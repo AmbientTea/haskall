@@ -1,0 +1,49 @@
+comment ";;" ;
+comment "<;" ";>" ;
+
+Eval. Program  ::= Exp ;
+Prog. Program  ::= Stm ;
+
+TInt.  Type ::= "int" ;
+TBool. Type ::= "bool" ;
+TVoid. Type ::= "void" ;
+
+separator Exp "," ;
+
+EIf.     Exp  ::= "iff" Exp1 "then" Exp1 "else" Exp1 ;
+EEq.     Exp1 ::= Exp1 "==" Exp1 ;
+ELt.     Exp1 ::= Exp1 "<"  Exp1 ;
+EAdd.    Exp2 ::= Exp2 "+" Exp3 ;
+ESub.    Exp2 ::= Exp2 "-" Exp3 ;
+EMul.    Exp3 ::= Exp3 "*" Exp4 ;
+Call.    Exp4 ::= Ident "(" [Exp] ")" ;
+EVar.    Exp4 ::= Ident ;
+EInt.    Exp4 ::= Integer ;
+ETrue.   Exp4 ::= "true" ;
+EFalse.  Exp4 ::= "false" ;    
+
+coercions Exp 5 ;
+
+TDec.  TDecl     ::= Ident ":" Type ;
+separator  TDecl "," ;
+terminator TDecl "" ;
+
+FDecl.  Decl ::= "fun" Ident "(" [TDecl] ")" ":" Type "=" Exp ;
+VDecl.  Decl ::= "var" TDecl "=" Exp ;
+
+separator  Decl "," ;
+terminator Decl "" ;
+
+separator  Stm ";" ;
+terminator Stm "" ;
+
+SPass.   Stm ::= "procrastinate" ;
+SBlock.  Stm ::= "begin" [Decl] [Stm] "end" ;
+SWhile.  Stm ::= "while" Exp "do" Stm "done" ;
+SIf.     Stm ::= "if" Exp "then" Stm "else" Stm ;
+SAssign. Stm ::= Ident "=" Exp ;
+
+
+
+
+

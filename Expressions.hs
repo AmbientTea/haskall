@@ -19,7 +19,7 @@ evalTDecList :: [TDecl] -> ([String], [VType])
 evalTDecList l = unzip $ map evalTDecl l
 
 -- variables
-evalDecl :: Decl -> Env -> State -> Either String (Env, State)
+evalDecl :: Decl -> Env -> State -> Either Exception (Env, State)
 
 evalDecl (VDecl decl e) en st = case eval e en st of
     Left err -> Left err
@@ -34,11 +34,11 @@ evalDecl (VDecl decl e) en st = case eval e en st of
                 Left err -> Left err
                 Right st2 -> if t == expT
                     then Right (newEnv, st2)
-                    else Left $ "typing error: expected " ++ (show expT) ++
+                    else throw $ "typing error: expected " ++ (show expT) ++
                                 " but expression " ++ (show e) ++ " has type "
                                 ++ (show t)
 
-evalDeclList :: [Decl] -> Env -> State -> Either String (Env, State)
+evalDeclList :: [Decl] -> Env -> State -> Either Exception (Env, State)
 evalDeclList [] e s = Right (e,s)
 evalDeclList (h:t) e s = case evalDecl h e s of
     Left err -> Left err
@@ -54,7 +54,7 @@ checkType t e en = case typeExp e en of
     Left er -> Left er
     Right t1 -> if t1 == t
         then Right t
-        else Left ((show e) ++ ", expected " ++ (show t) ++ ", got " ++ (show t1))
+        else throw ((show e) ++ ", expected " ++ (show t) ++ ", got " ++ (show t1))
 
 expect t1 e t2 en = case checkType t1 e en of
     Left er -> Left er
@@ -67,7 +67,7 @@ expect2 t1 t2 e1 e2 t3 en = case (checkType t1 e1 en, checkType t2 e2 en) of
 
 -- construction typings
 
-typeExp :: Exp -> Env -> Either String VType
+typeExp :: Exp -> Env -> Either Exception VType
 typeExp ETrue  en   = Right BoolType
 typeExp EFalse  en  = Right BoolType
 typeExp (EInt _) en = Right IntType
@@ -82,7 +82,7 @@ typeExp (ELt e1 e2) en = expect2 IntType IntType e1 e2 BoolType en
 typeExp (EIf e1 e2 e3) en = case typeExp e1 en of
     Left err -> Left err
     Right t  -> if t /= BoolType
-        then Left $ (show e1) ++ " of type " ++ (show t) ++ " as a condition"
+        then throw $ (show e1) ++ " of type " ++ (show t) ++ " as a condition"
         else case typeExp e2 en of
             Left err -> Left err
             Right t2 -> expect t2 e3 t2 en
@@ -94,7 +94,7 @@ typeExp (ELet decls e) en = case evalDeclList decls en emptyState of
     Right (newEnv, _) -> typeExp e newEnv
 
 typeExp (EFunc decls tp exp) en = if not $ allTyped decls
-    then Left $ "derpy derp"
+    then throw $ "derpy derp"
     else let
             (names, types) = evalTDecList decls
             (newEnv, newSt) = createVars (names, types) en emptyState
@@ -106,22 +106,23 @@ typeExp (Call (Ident fun) exps) en = case typeExps exps en of
     Right types -> case getVarType fun en of
         Left err -> Left err
         Right (FuncType tps tp) -> if tps /= types
-            then Left $ "cannot apply arguments " ++ (show exps) ++
+            then throw $ "cannot apply arguments " ++ (show exps) ++
                         " of types " ++ (show types) ++ " to function " ++
                         fun ++ " of type " ++ (show (FuncType tps tp))
             else Right tp
 
+typeExps :: [Exp] -> Env -> Either Exception [VType]
 typeExps exps en = let types = map (flip typeExp en) exps in
     case lefts types of
         [] -> Right $ rights types
-        lst -> Left $ intercalate ", " lst
+        lst -> throw (intercalate ", " (map show lst))
 
 
 -- evaluations
 
 eitherPair f e1 e2 = case (e1,e2) of (Right v1, Right v2) -> f v1 v2
 
-eval :: Exp -> Env -> State -> Either String Value
+eval :: Exp -> Env -> State -> Either Exception Value
 eval e en s = let topExpType = typeExp e en in case topExpType of
     Left err -> Left err
     Right _ -> case e of
@@ -141,7 +142,7 @@ eval e en s = let topExpType = typeExp e en in case topExpType of
             Left err -> Left err
             Right (ne, ns) -> eval exp ne ns
         EFunc decls tp exp -> if not $ allTyped decls
-            then Left $ "untyped arguments in " ++ (printTree e) ++ (show decls)
+            then throw $ "untyped arguments in " ++ (printTree e) ++ (show decls)
             else let
                     (names, types) = evalTDecList decls
                     func = case topExpType of
@@ -158,7 +159,7 @@ eval e en s = let topExpType = typeExp e en in case topExpType of
                             Left err -> Left err
                             Right funSt2 -> eval fexp funEnv funSt2
 
-evalList :: [Exp] -> Env -> State -> Either String [Value]
+evalList :: [Exp] -> Env -> State -> Either Exception [Value]
 evalList [] _ _ = Right []
 evalList (h:t) en st = case eval h en st of
     Left err -> Left err 

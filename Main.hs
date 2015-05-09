@@ -18,10 +18,10 @@ parseIt input = case pProgram $ myLexer input of
     Ok prog -> case prog of
         Eval exp -> case eval exp emptyEnv emptyState of
             Right v -> show v
-            Left er -> er
+            Left er -> show er
         Prog stm -> case evalStm emptyEnv stm emptyState of
             Right s -> show s
-            Left er -> er
+            Left er -> show er
 
 main :: IO ()
 main = do

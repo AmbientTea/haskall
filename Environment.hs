@@ -4,6 +4,19 @@ import Data.Map (Map, insert, lookup, empty, toList)
 import AbsHaskall
 import Data.List (intercalate)
 
+-- Error Handling
+
+data Exception =
+    Exception String
+    | NestedException Exception String
+    -- | NotDeclaredException
+
+instance Show Exception where
+    show (Exception mess) = mess
+    show (NestedException ex mess) = mess ++ ", caused by: " ++ (show ex)
+
+throw str = Left $ Exception str
+
 -- TYPES
 
 data VType =
@@ -72,22 +85,22 @@ insertStore k v s = State (nextKey s) (insert k v (store s))
 lookupStore k s = Data.Map.lookup k (store s)
 
 getVarType var env = case Data.Map.lookup var (keys env) of
-    Nothing -> Left $ "cannot type: variable " ++ (show var) ++ " not found in env " ++ (show env)
+    Nothing -> throw $ "cannot type: variable " ++ (show var) ++ " not found in env " ++ (show env)
     Just (_, t) -> Right t
 
-getVar :: String -> Env -> State -> Either String Value
+getVar :: String -> Env -> State -> Either Exception Value
 getVar var env state = case Data.Map.lookup var (keys env) of
-    Nothing -> Left $ "cannot get: variable " ++ (show var) ++ " not found in env " ++ (show env)
+    Nothing -> throw $ "cannot get: variable " ++ (show var) ++ " not found in env " ++ (show env)
     Just (p, _) -> case lookupStore p state of
-        Nothing -> Left $ "uninitialized variable " ++ (show var)
+        Nothing -> throw $ "uninitialized variable " ++ (show var)
         Just v  -> Right v
 
-setVar :: String -> Env -> Value -> State -> Either String State
+setVar :: String -> Env -> Value -> State -> Either Exception State
 setVar var env val state = case Data.Map.lookup var (keys env) of
-    Nothing -> Left $ "cannot set: variable " ++ (show var) ++ " not found in env " ++ (show env)
+    Nothing -> throw $ "cannot set: variable " ++ (show var) ++ " not found in env " ++ (show env)
     Just (p, t) -> let t2 = typeValue val in if t2 == t
         then Right $ insertStore p val state
-        else Left $ "cannot assign value " ++ (show val) ++ " of type " ++
+        else throw $ "cannot assign value " ++ (show val) ++ " of type " ++
             (show t2) ++ " to variable " ++ (show var) ++ " of type " ++
             (show t)
 
@@ -101,7 +114,7 @@ createVars (n:nt, t:tt) en st = let
         (ne, ns) = createVar n t en st
     in createVars (nt,tt) ne ns
 
-setVars :: [ (String, Value) ] -> Env -> State -> Either String State
+setVars :: [ (String, Value) ] -> Env -> State -> Either Exception State
 setVars [] en st = Right st
 setVars ((var, val) : tl) en st = case setVar var en val st of
     Left err -> Left err

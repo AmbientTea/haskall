@@ -3,7 +3,7 @@ import AbsHaskall
 import Expressions
 import Environment
 
-evalStm :: Env -> Stm -> State -> Either String State
+evalStm :: Env -> Stm -> State -> Either Exception State
 
 evalStm en SPass s = Right s
 evalStm en (SAssign (Ident var) exp) s = case eval exp en s of
@@ -13,7 +13,7 @@ evalStm en (SAssign (Ident var) exp) s = case eval exp en s of
 evalStm en (SIf exp stm1 stm2) s = case typeExp exp en of
     Left err -> Left err
     Right t -> if t /= BoolType
-        then Left $ "expression " ++ (show exp) ++ " of type " ++
+        then throw $ "expression " ++ (show exp) ++ " of type " ++
                     (show t) ++ " as a condition"
         else case eval exp en s of
             Left err -> Left err
@@ -24,7 +24,7 @@ evalStm en (SIf exp stm1 stm2) s = case typeExp exp en of
 evalStm en (SWhile exp stm) s = case typeExp exp en of
     Left err -> Left err
     Right t -> if t /= BoolType
-        then Left $ "expression " ++ (show exp) ++ " of type " ++
+        then throw $ "expression " ++ (show exp) ++ " of type " ++
                     (show t) ++ " as a loop condition"
         else case eval exp en s of
             Left err -> Left err
@@ -39,7 +39,7 @@ evalStm en (SBlock decls stms) s = case evalDeclList decls en s of
     Right (ne, ns) -> evalStmList ne stms ns
 
 
-evalStmList :: Env -> [Stm] -> State -> Either String State
+evalStmList :: Env -> [Stm] -> State -> Either Exception State
 evalStmList en [] s = Right s
 evalStmList en (h:t) s = case evalStm en h s of
     Left err -> Left err

@@ -25,6 +25,25 @@ evalDecl (VDecl (TDec (Ident var) t) e) en st = case eval e en st of
             Left err -> Left err
             Right st2 -> Right (newEnv, st2)
 
+
+evalDecl (VDecl (UnTDec (Ident var)) e) en st = case eval e en st of
+    Left err -> Left err
+    Right val -> let
+                t = typeValue val 
+                (newEnv, newSt) = createVar var t en st
+                newSt2  = setVar var newEnv val newSt
+            in case newSt2 of
+                Left err -> Left err
+                Right st2 -> Right (newEnv, st2)
+{-
+evalDecl (VDecl (TDec (Ident var) t) e) env st = let
+        funEV = let
+                (evEnv,evStTmp) = createVar var (typeToken t) env st
+                evSt = setVar var evEnv funEV evStTmp
+        in case eval e evEnv evSt of
+            Left err -> Left err
+            Right funVal -> funVal
+-}
 -- function
 
 -- evalDecl (FDecl (Ident var) args tp exp) en st = let

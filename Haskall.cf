@@ -29,7 +29,8 @@ EFunc.   Exp4 ::= "fun" "(" [TDecl] ")" ":" Type "=" Exp ;
 
 coercions Exp 5 ;
 
-TDec.  TDecl     ::= Ident ":" Type ;
+TDec.   TDecl     ::= Ident ":" Type ;
+UnTDec. TDecl     ::= Ident ;
 separator  TDecl "," ;
 terminator TDecl "" ;
 

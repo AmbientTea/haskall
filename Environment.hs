@@ -1,7 +1,8 @@
 module Environment where
 
-import Data.Map (Map, insert, lookup, empty)
+import Data.Map (Map, insert, lookup, empty, toList)
 import AbsHaskall
+import Data.List (intercalate)
 
 -- TYPES
 
@@ -46,7 +47,12 @@ valBoolEq = liftValOp (==) bool bool BoolVal
 
 data Env = Env {
     keys :: Map String (Integer, VType)
-    } deriving (Eq, Ord, Show)
+    } deriving (Eq, Ord)
+
+instance Show Env where
+    show env = let
+        inShow (name, (pos, tp)) = name ++ " : " ++ (show tp) ++ " -> " ++ (show pos)
+        in intercalate "\n" $ map inShow $ toList $ keys env
 
 data State = State {
     nextKey :: Integer,
@@ -60,19 +66,19 @@ insertStore k v s = State (nextKey s) (insert k v (store s))
 lookupStore k s = Data.Map.lookup k (store s)
 
 getVarType var env = case Data.Map.lookup var (keys env) of
-    Nothing -> Left $ "variable " ++ (show var) ++ " not declared"
+    Nothing -> Left $ "cannot type: variable " ++ (show var) ++ " not found in env " ++ (show env)
     Just (_, t) -> Right t
 
 getVar :: String -> Env -> State -> Either String Value
 getVar var env state = case Data.Map.lookup var (keys env) of
-    Nothing -> Left $ "variable " ++ (show var) ++ " not found in env " ++ (show env)
+    Nothing -> Left $ "cannot get: variable " ++ (show var) ++ " not found in env " ++ (show env)
     Just (p, _) -> case lookupStore p state of
         Nothing -> Left $ "uninitialized variable " ++ (show var)
         Just v  -> Right v
 
 setVar :: String -> Env -> Value -> State -> Either String State
 setVar var env val state = case Data.Map.lookup var (keys env) of
-    Nothing -> Left $ "variable " ++ (show var) ++ " not found in env " ++ (show env)
+    Nothing -> Left $ "cannot set: variable " ++ (show var) ++ " not found in env " ++ (show env)
     Just (p, t) -> let t2 = typeValue val in if t2 == t
         then Right $ insertStore p val state
         else Left $ "cannot assign value " ++ (show val) ++ " of type " ++

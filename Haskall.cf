@@ -38,13 +38,13 @@ terminator Decl "" ;
 separator  Stm ";" ;
 terminator Stm "" ;
 
-SPass.   Stm ::= "procrastinate" ;
-SBlock.  Stm ::= "begin" [Decl] [Stm] "end" ;
-SWhile.  Stm ::= "while" Exp "do" Stm "done" ;
-SIf.     Stm ::= "if" Exp "then" Stm "else" Stm ;
-SAssign. Stm ::= Ident "=" Exp ;
+SIf.     Stm ::= "if" Exp "then" Stm1 "else" Stm1 "fi";
+SWhile.  Stm ::= "while" Exp "do" Stm1 "done" ;
+SAssign. Stm1 ::= Ident "=" Exp ;
+SPass.   Stm1 ::= "procrastinate" ;
+SBlock.  Stm2 ::= "begin" [Decl] [Stm] "end" ;
 
-
+coercions Stm 2 ;
 
 
 

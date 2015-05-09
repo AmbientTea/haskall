@@ -9,6 +9,7 @@ import ErrM
 
 import Expressions
 import Environment
+import Instructions
 
 import Data.Map (empty)
 
@@ -18,7 +19,9 @@ parseIt input = case pProgram $ myLexer input of
         Eval exp -> case eval exp emptyEnv empty of
             Right v -> show v
             Left er -> er
-        Prog stm -> "not implemented yet"
+        Prog stm -> case evalStm emptyEnv stm empty of
+            Right s -> show s
+            Left er -> er
 
 main :: IO ()
 main = do

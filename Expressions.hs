@@ -1,7 +1,5 @@
 module Expressions where
 import AbsHaskall
-import Values
-import Types
 import Environment
 
 import Data.Either

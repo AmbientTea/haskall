@@ -1,6 +1,4 @@
 module Environment where
-import Values
-import Types
 
 import Data.Map (Map, insert, lookup, empty)
 import AbsHaskall

@@ -2,8 +2,6 @@ module Instructions where
 import AbsHaskall
 import Expressions
 import Environment
-import Types
-import Values
 
 evalStm :: Env -> Stm -> State -> Either String State
 

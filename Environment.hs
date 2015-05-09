@@ -10,7 +10,13 @@ data VType =
     IntType
     | BoolType
     | FuncType [VType] VType
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord)
+
+instance Show VType where
+    show IntType = "int"
+    show BoolType = "bool"
+    show (FuncType args tp) =
+        "(" ++ (intercalate ", " $ map show args) ++ ") => " ++ (show tp)
     
 typeValue (IntVal _)  = IntType
 typeValue (BoolVal _) = BoolType

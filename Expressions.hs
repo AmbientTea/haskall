@@ -1,6 +1,7 @@
 module Expressions where
 import AbsHaskall
 import Environment
+import PrintHaskall
 
 import Data.Either
 import Data.List
@@ -8,49 +9,34 @@ import Data.List
 -- DECLARATIONS
 
 -- typed
-evalTDecl (TDec (Ident var) tp) = let t = typeToken tp in
-    (var, t)
+allTyped ((TDec _ _):t) = allTyped t
+allTyped ((UnTDec _):t) = False
+allTyped [] = True
+
+evalTDecl (TDec (Ident var) tp) = (var, typeToken tp)
 
 evalTDecList :: [TDecl] -> ([String], [VType])
 evalTDecList l = unzip $ map evalTDecl l
 
--- variable
+-- variables
 evalDecl :: Decl -> Env -> State -> Either String (Env, State)
-evalDecl (VDecl (TDec (Ident var) t) e) en st = case eval e en st of
+
+evalDecl (VDecl decl e) en st = case eval e en st of
     Left err -> Left err
     Right val -> let
-            (newEnv, newSt) = createVar var (typeToken t) en st
-            newSt2  = setVar var newEnv val newSt
-        in case newSt2 of
-            Left err -> Left err
-            Right st2 -> Right (newEnv, st2)
-
-
-evalDecl (VDecl (UnTDec (Ident var)) e) en st = case eval e en st of
-    Left err -> Left err
-    Right val -> let
-                t = typeValue val 
+                t = typeValue val
+                (var, expT) = case decl of
+                    TDec (Ident vr) ext -> (vr, typeToken ext)
+                    UnTDec (Ident vr) -> (vr, t)
                 (newEnv, newSt) = createVar var t en st
                 newSt2  = setVar var newEnv val newSt
             in case newSt2 of
                 Left err -> Left err
-                Right st2 -> Right (newEnv, st2)
-{-
-evalDecl (VDecl (TDec (Ident var) t) e) env st = let
-        funEV = let
-                (evEnv,evStTmp) = createVar var (typeToken t) env st
-                evSt = setVar var evEnv funEV evStTmp
-        in case eval e evEnv evSt of
-            Left err -> Left err
-            Right funVal -> funVal
--}
--- function
-
--- evalDecl (FDecl (Ident var) args tp exp) en st = let
---        (argNames, argTypes)  = evalTDecList args
---        function = FunVal argNames en exp
---        funcType = FuncType argTypes tp
---    in case 
+                Right st2 -> if t == expT
+                    then Right (newEnv, st2)
+                    else Left $ "typing error: expected " ++ (show expT) ++
+                                " but expression " ++ (show e) ++ " has type "
+                                ++ (show t)
 
 evalDeclList :: [Decl] -> Env -> State -> Either String (Env, State)
 evalDeclList [] e s = Right (e,s)
@@ -107,11 +93,13 @@ typeExp (ELet decls e) en = case evalDeclList decls en emptyState of
     Left err -> Left err
     Right (newEnv, _) -> typeExp e newEnv
 
-typeExp (EFunc decls tp exp) en = let
-        (names, types) = evalTDecList decls
-        (newEnv, newSt) = createVars (names, types) en emptyState
-        t = typeToken tp
-    in expect t exp (FuncType types t) newEnv
+typeExp (EFunc decls tp exp) en = if not $ allTyped decls
+    then Left $ "derpy derp"
+    else let
+            (names, types) = evalTDecList decls
+            (newEnv, newSt) = createVars (names, types) en emptyState
+            t = typeToken tp
+        in expect t exp (FuncType types t) newEnv
 
 typeExp (Call (Ident fun) exps) en = case typeExps exps en of
     Left err -> Left err
@@ -152,11 +140,13 @@ eval e en s = let topExpType = typeExp e en in case topExpType of
         ELet decls exp -> case evalDeclList decls en s of
             Left err -> Left err
             Right (ne, ns) -> eval exp ne ns
-        EFunc decls tp exp -> let
-                (names, types) = evalTDecList decls
-                func = case topExpType of
-                    Right (FuncType _ tp) -> FunVal names types en exp tp
-            in Right func
+        EFunc decls tp exp -> if not $ allTyped decls
+            then Left $ "untyped arguments in " ++ (printTree e) ++ (show decls)
+            else let
+                    (names, types) = evalTDecList decls
+                    func = case topExpType of
+                        Right (FuncType _ tp) -> FunVal names types en exp tp
+                in Right func
         Call (Ident fun) exps -> case getVar fun en s of
             Left err -> Left err
             Right (FunVal names types fenv fexp ftp) ->

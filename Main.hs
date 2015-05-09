@@ -16,10 +16,10 @@ import Data.Map (empty)
 parseIt input = case pProgram $ myLexer input of
     Bad err -> err
     Ok prog -> case prog of
-        Eval exp -> case eval exp emptyEnv empty of
+        Eval exp -> case eval exp emptyEnv emptyState of
             Right v -> show v
             Left er -> er
-        Prog stm -> case evalStm emptyEnv stm empty of
+        Prog stm -> case evalStm emptyEnv stm emptyState of
             Right s -> show s
             Left er -> er
 

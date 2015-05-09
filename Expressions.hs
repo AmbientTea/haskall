@@ -4,17 +4,36 @@ import Values
 import Types
 import Environment
 
+import Data.Either
+import Data.List
+
 -- DECLARATIONS
 
+-- typed
+evalTDecl (TDec (Ident var) tp) = let t = typeToken tp in
+    (var, t)
+
+evalTDecList :: [TDecl] -> ([String], [VType])
+evalTDecList l = unzip $ map evalTDecl l
+
+-- variable
 evalDecl :: Decl -> Env -> State -> Either String (Env, State)
 evalDecl (VDecl (TDec (Ident var) t) e) en st = case eval e en st of
     Left err -> Left err
     Right val -> let
-            newEnv = createVar var (typeToken t) en
-            newSt  = setVar var newEnv val st
-        in case newSt of
+            (newEnv, newSt) = createVar var (typeToken t) en st
+            newSt2  = setVar var newEnv val newSt
+        in case newSt2 of
             Left err -> Left err
             Right st2 -> Right (newEnv, st2)
+
+-- function
+
+-- evalDecl (FDecl (Ident var) args tp exp) en st = let
+--        (argNames, argTypes)  = evalTDecList args
+--        function = FunVal argNames en exp
+--        funcType = FuncType argTypes tp
+--    in case 
 
 evalDeclList :: [Decl] -> Env -> State -> Either String (Env, State)
 evalDeclList [] e s = Right (e,s)
@@ -71,12 +90,34 @@ typeExp (ELet decls e) en = case evalDeclList decls en emptyState of
     Left err -> Left err
     Right (newEnv, _) -> typeExp e newEnv
 
+typeExp (EFunc decls tp exp) en = let
+        (names, types) = evalTDecList decls
+        (newEnv, newSt) = createVars (names, types) en emptyState
+        t = typeToken tp
+    in expect t exp (FuncType types t) newEnv
+
+typeExp (Call (Ident fun) exps) en = case typeExps exps en of
+    Left err -> Left err
+    Right types -> case getVarType fun en of
+        Left err -> Left err
+        Right (FuncType tps tp) -> if tps /= types
+            then Left $ "cannot apply arguments " ++ (show exps) ++
+                        " of types " ++ (show types) ++ " to function " ++
+                        fun ++ " of type " ++ (show (FuncType tps tp))
+            else Right tp
+
+typeExps exps en = let types = map (flip typeExp en) exps in
+    case lefts types of
+        [] -> Right $ rights types
+        lst -> Left $ intercalate ", " lst
+
+
 -- evaluations
 
 eitherPair f e1 e2 = case (e1,e2) of (Right v1, Right v2) -> f v1 v2
 
 eval :: Exp -> Env -> State -> Either String Value
-eval e en s = case typeExp e en of
+eval e en s = let topExpType = typeExp e en in case topExpType of
     Left err -> Left err
     Right _ -> case e of
         ETrue  -> Right $ BoolVal True
@@ -94,9 +135,29 @@ eval e en s = case typeExp e en of
         ELet decls exp -> case evalDeclList decls en s of
             Left err -> Left err
             Right (ne, ns) -> eval exp ne ns
+        EFunc decls tp exp -> let
+                (names, types) = evalTDecList decls
+                func = case topExpType of
+                    Right (FuncType _ tp) -> FunVal names types en exp tp
+            in Right func
+        Call (Ident fun) exps -> case getVar fun en s of
+            Left err -> Left err
+            Right (FunVal names types fenv fexp ftp) ->
+                case evalList exps en s of
+                    Left err -> Left err
+                    Right vals -> let
+                            (funEnv, funSt) = createVars (names, types) fenv s
+                        in case setVars (zip names vals) funEnv funSt of
+                            Left err -> Left err
+                            Right funSt2 -> eval fexp funEnv funSt2
 
-
-
+evalList :: [Exp] -> Env -> State -> Either String [Value]
+evalList [] _ _ = Right []
+evalList (h:t) en st = case eval h en st of
+    Left err -> Left err 
+    Right val -> case evalList t en st of
+        Left err -> Left err
+        Right lst -> Right (val:lst)
 
 
 

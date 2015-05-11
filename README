@@ -19,6 +19,9 @@ Język posiada standardowe funkcyjne konstrukcje z wyrażeń:
 
 Wszystkie funkcje tworzone są w postaci wieloargumentowych wyrażeń lamda:
     fun([arg : type]) : type = expression
+Funkcje rekurencyjne tworzone są poprzez nazwalne lambdy:
+    fun f([arg : type]) : type = expr
+gdzie expr może zawierać odwołania do f
 
 Z konstrukcji imperatywnych zaimplementowane zostały:
     + bloki, podzielone na sekcję deklaracji oraz sekcję poleceń, pascal-style

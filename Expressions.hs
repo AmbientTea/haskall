@@ -101,6 +101,18 @@ typeExp (EFunc decls tp exp) en = if not $ allTyped decls
             t = typeToken tp
         in expect t exp (FuncType types t) newEnv
 
+typeExp (ENFunc (Ident fun) decls tp exp) en = if not $ allTyped decls
+    then Left $ UntypedArgumentException (EFunc decls tp exp) 
+    else let
+            (names, types) = evalTDecList decls
+            t = typeToken tp
+            funType = FuncType types t
+            (newEnv, newSt) = createVars (names, types) en emptyState
+            (newEnv2, newSt2) = createVar fun funType newEnv newSt
+        in expect t exp funType newEnv2
+           -- Left $ Exception $ show $ expect t exp funType newEnv2
+           -- Left $ Exception (show newEnv2)
+
 typeExp (Call (Ident fun) exps) en = case typeExps exps en of
     Left err -> Left err
     Right types -> case getVarType fun en of
@@ -144,11 +156,22 @@ eval e en s = let topExpType = typeExp e en in case topExpType of
             Right (ne, ns) -> eval exp ne ns
         EFunc decls tp exp -> if not $ allTyped decls
             then Left $ UntypedArgumentException e
-            else let
-                    (names, types) = evalTDecList decls
-                    func = case topExpType of
-                        Right (FuncType _ tp) -> FunVal names types en s exp tp
-                in Right func
+            else case topExpType of
+                Right (FuncType _ tp) -> let
+                        (names, types) = evalTDecList decls
+                    in Right $ FunVal names types en s exp tp
+        ENFunc (Ident fun) decls tp exp -> if not $ allTyped decls
+            then Left $ UntypedArgumentException e
+            else case topExpType of
+                Right (FuncType _ tp) -> let
+                        (names, types) = evalTDecList decls
+                        (fenv,fst1) = createVar fun (FuncType types tp) en s
+                        funVal = let
+                                fst2 = case setVar fun fenv funVal fst1 of
+                                    Right fst -> fst
+                            in FunVal names types fenv fst2 exp tp
+                    in Right $ funVal
+                       -- throw $ show fenv
         Call (Ident fun) exps -> case getVar fun en s of
             Left err -> Left err
             Right (FunVal names types fenv fst fexp ftp) ->

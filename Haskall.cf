@@ -27,6 +27,7 @@ EInt.    Exp4 ::= Integer ;
 ETrue.   Exp4 ::= "true" ;
 EFalse.  Exp4 ::= "false" ;
 EFunc.   Exp4 ::= "fun" "(" [TDecl] ")" ":" Type "=" Exp ;
+ENFunc.  Exp4 ::= "fun" Ident "(" [TDecl] ")" ":" Type "=" Exp ;
 
 coercions Exp 5 ;
 

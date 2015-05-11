@@ -1,0 +1,43 @@
+Uruchamianie:
+Interpreter obsługuje czytanie z pliku oraz ze standardowego wejścia:
+    ./interpreter file
+    ./interpreter < file
+
+Krótki opis języka:
+
+Język stanowi luźne połączenie języków imperatywnych w stylu pascala z językami
+funkcyjnymi(dlatego nazywa się haskall). Funkcje w języku są czyste (nie
+zmieniają stanu) i traktowane są jako zwyczajne wartości, w szczególności mogą
+być podawane jako argumenty innych funkcji (póki co nie obsługiwane są
+domknięcia). Obsługiwane typy to int oraz ból + wszystkie typy funkcyjne, które
+można na ich podstawie zbudować.
+
+Język posiada standardowe funkcyjne konstrukcje z wyrażeń:
+    + iff-then-else
+    + let-in
+
+Wszystkie funkcje tworzone są w postaci wieloargumentowych wyrażeń lamda:
+    fun([arg : type]) : type = expression
+
+Z konstrukcji imperatywnych zaimplementowane zostały:
+    + bloki, podzielone na sekcję deklaracji oraz sekcję poleceń, pascal-style
+    + if-then-else-fi
+    + while-do-done
+    + przypisania do zmiennych
+    + instrukcja pusta "procrastinate"
+
+Deklaracje zmiennych w blokach i wyrażeniach let-in nie wymagają jawnego podania
+typów( typy są wnioskowane ), ale po nazwie zmiennej może nastąpić sygnatura
+    var [: type]
+która zostanie sprawdzona.
+
+Komentarze mają postać jednolinijkową
+    ;; komentarz
+lub wielo:
+    <; komentarz ;>
+
+Wejście:
+Interpreter przyjmuje dwa rodzaje wejścia:
+    + wyrażenie do obliczenia, dla którego wypisuje wartość
+    + instrukcję(dowolną, ale najwięcej sensu robi oczywiście blok), dla której
+      wypisuje stan końcowy

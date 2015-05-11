@@ -13,8 +13,7 @@ evalStm en (SAssign (Ident var) exp) s = case eval exp en s of
 evalStm en (SIf exp stm1 stm2) s = case typeExp exp en of
     Left err -> Left err
     Right t -> if t /= BoolType
-        then throw $ "expression " ++ (show exp) ++ " of type " ++
-                    (show t) ++ " as a condition"
+        then Left $ ConditionException exp t
         else case eval exp en s of
             Left err -> Left err
             Right val -> case val of
@@ -24,8 +23,7 @@ evalStm en (SIf exp stm1 stm2) s = case typeExp exp en of
 evalStm en (SWhile exp stm) s = case typeExp exp en of
     Left err -> Left err
     Right t -> if t /= BoolType
-        then throw $ "expression " ++ (show exp) ++ " of type " ++
-                    (show t) ++ " as a loop condition"
+        then Left $ ConditionException exp t
         else case eval exp en s of
             Left err -> Left err
             Right val -> case val of

@@ -1,5 +1,7 @@
 module Main where
 
+import System.Environment
+
 import LexHaskall
 import ParHaskall
 import SkelHaskall
@@ -25,6 +27,9 @@ parseIt input = case pProgram $ myLexer input of
 
 main :: IO ()
 main = do
-    input <- getContents
+    args <- getArgs
+    input <- case args of
+        [] -> getContents
+        f:_ -> readFile f
     putStrLn $ parseIt input
     return ()

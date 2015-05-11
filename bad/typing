@@ -1,0 +1,5 @@
+let
+    var f2 = fun(x : int, y : int, z : int) : int =
+        iff x then y else z
+in
+    f(9,4,5)

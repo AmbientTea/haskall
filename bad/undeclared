@@ -1,0 +1,3 @@
+let
+    var f = fun(x: int, y: int) : int = x / t
+in f(10,11)

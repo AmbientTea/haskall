@@ -1,3 +1,5 @@
+autor: Nikolaos Dymitriadis, 334438
+
 Uruchamianie:
 Interpreter obsługuje czytanie z pliku oraz ze standardowego wejścia:
     ./interpreter file

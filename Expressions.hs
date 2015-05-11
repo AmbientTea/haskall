@@ -8,6 +8,18 @@ import Data.List
 
 -- DECLARATIONS
 
+-- function arguments
+addArgument (TArgDec (Ident arg) tp) env st =
+    createEmptyVar arg (typeToken tp) env st
+
+addArguments [] env st = (env,st)
+addArguments (arg:rest) env st = let (newEnv, newSt) = addArgument arg env st
+    in addArguments rest newEnv newSt
+
+argTypes args = map (\(TArgDec _ tp) -> typeToken tp) args
+argNames args = map (\(TArgDec (Ident arg) _) -> arg) args
+
+{-
 -- typed
 allTyped ((TDec _ _):t) = allTyped t
 allTyped ((UnTDec _):t) = False
@@ -41,13 +53,15 @@ evalDeclList [] e s = Right (e,s)
 evalDeclList (h:t) e s = case evalDecl h e s of
     Left err -> Left err
     Right (ne, ns) -> evalDeclList t ne ns
+-}
 
+-- 
 
 -- EXPRESSIONS
 
 
 -- typing expectations
-
+{-
 checkType t e en = case typeExp e en of
     Left er -> Left er
     Right t1 -> if t1 == t
@@ -89,9 +103,11 @@ typeExp (EIf e1 e2 e3) en = case typeExp e1 en of
 
 typeExp (EVar (Ident var)) en = getVarType var en
 
-typeExp (ELet decls e) en = case evalDeclList decls en emptyState of
+typeExp (ELet decls e) en = undefined
+
+{-case evalDeclList decls en emptyState of
     Left err -> Left err
-    Right (newEnv, _) -> typeExp e newEnv
+    Right (newEnv, _) -> typeExp e newEnv -}
 
 typeExp (EFunc decls tp exp) en = if not $ allTyped decls
     then Left $ UntypedArgumentException (EFunc decls tp exp) 
@@ -127,39 +143,84 @@ typeExps exps en = let types = map (flip typeExp en) exps in
         [] -> Right $ rights types
         lst -> throw (intercalate "\n" (map show lst))
 
-
+-}
 -- evaluations
 
 eitherPair f e1 e2 = case (e1,e2) of (Right v1, Right v2) -> f v1 v2
 
+intOp env op e1 e2 st =
+    Right $ eitherPair op (compExp env e1 st) (compExp env e2 st)
+
+unpackApply :: Operator -> TryValue -> TryValue -> TryValue
+unpackApply op v1 v2 = case (v1,v2) of
+    (Right v1, Right v2) -> op v1 v2
+    (Left err, _) -> Left err
+    (_, Left err) -> Left err
+
+opComp :: Env -> Operator -> Exp -> Exp -> State -> TryValue
+opComp env op e1 e2 st =
+    unpackApply op (compExp env e1 st) (compExp env e2 st)
+
+compExp :: Env -> Exp -> State -> TryValue
+compExp env (ETrue ) st = Right $ BoolVal True
+compExp env (EFalse) st = Right $ BoolVal False
+compExp env (EInt i) st = Right $ IntVal i
+
+compExp env (EAdd e1 e2) st = opComp env valAdd e1 e2 st
+compExp env (ESub e1 e2) st = opComp env valSub e1 e2 st
+compExp env (EMul e1 e2) st = opComp env valMul e1 e2 st
+compExp env (EDiv e1 e2) st = opComp env valDiv e1 e2 st
+
+compExp env (EEq e1 e2) st = opComp env valEq e1 e2 st
+compExp env (ELt e1 e2) st = opComp env valLt e1 e2 st
+
+compExp env (EIf e1 e2 e3) st = case compExp env e1 st of
+    Right (BoolVal True)  -> compExp env e2 st
+    Right (BoolVal False) -> compExp env e3 st
+
+compExp env (EVar (Ident var)) st = Right $ getVarValue var env st
+
+compExp env (ELet [] exp) st = compExp env exp st
+compExp env (ELet ((FSTDec (Ident var) tp vexp):rest) exp) st =
+    case compExp env vexp st of
+        Left err -> Left err
+        Right val -> let
+                (newEnv, newSt) = createVar var (typeToken tp) env val st
+            in compExp newEnv (ELet rest exp) newSt
+
+compExp env (EFunc decls tp exp) st = let
+        (funEnv, funSt) = addArguments decls env st
+    in Right $ FunVal (argNames decls) (argTypes decls) funEnv
+                                                    funSt exp (typeToken tp)
+
+compExp env (ENFunc (Ident fun) decls tp exp) st = let
+        funVal = compExp funEnv (EFunc decls tp exp) funSt where
+            funType = FuncType (argTypes decls) (typeToken tp)
+            realVal = case funVal of Right v -> v
+            (funEnv, funSt) = createVar fun funType env realVal st
+    in funVal
+
+compExp env (Call fexp exps) st = case compExp env fexp st of
+    Right (FunVal args types funEnv funSt body tp) -> let
+            argVals = map (\arg -> unright $ compExp env arg st) exps
+            runSt = setValues (zip args argVals) funEnv funSt
+        in compExp funEnv body runSt
+            
+        
+
+
 eval :: Exp -> Env -> State -> Either Exception Value
-eval e en s = let topExpType = typeExp e en in case topExpType of
-    Left err -> Left err
-    Right _ -> case e of
-        ETrue  -> Right $ BoolVal True
-        EFalse -> Right $ BoolVal False
-        EInt i -> Right $ IntVal i
-        EAdd e1 e2 -> Right $ eitherPair valAdd (eval e1 en s) (eval e2 en s)
-        ESub e1 e2 -> Right $ eitherPair valSub (eval e1 en s) (eval e2 en s)
-        EMul e1 e2 -> Right $ eitherPair valMul (eval e1 en s) (eval e2 en s)
-        EDiv e1 e2 -> case (eval e2 en s) of
-            Right (IntVal 0) -> Left ZeroDivisionException
-            dv -> Right $ eitherPair valDiv (eval e1 en s) dv
-        EEq e1 e2  -> Right $ eitherPair valIntEq (eval e1 en s) (eval e2 en s)
-        ELt e1 e2  -> Right $ eitherPair valLt (eval e1 en s) (eval e2 en s)
-        EIf e1 e2 e3 -> case eval e1 en s of
-            Right (BoolVal True)  -> eval e2 en s
-            Right (BoolVal False) -> eval e3 en s
-        EVar (Ident var) -> getVar var en s
-        ELet decls exp -> case evalDeclList decls en s of
-            Left err -> Left err
-            Right (ne, ns) -> eval exp ne ns
+eval e en s = undefined
+{-
+
         EFunc decls tp exp -> if not $ allTyped decls
             then Left $ UntypedArgumentException e
             else case topExpType of
                 Right (FuncType _ tp) -> let
                         (names, types) = evalTDecList decls
                     in Right $ FunVal names types en s exp tp
+                    
+                    
         ENFunc (Ident fun) decls tp exp -> if not $ allTyped decls
             then Left $ UntypedArgumentException e
             else case topExpType of
@@ -184,6 +245,7 @@ eval e en s = let topExpType = typeExp e en in case topExpType of
                             Right funSt2 -> eval fexp funEnv funSt2
             Right _ -> Left $ Exception ("something horrible happened and" ++
                          "now i need to uninstall haskell")
+-}
 
 evalList :: [Exp] -> Env -> State -> Either Exception [Value]
 evalList [] _ _ = Right []

@@ -4,6 +4,7 @@ import Data.Map (Map, insert, lookup, empty, toList)
 import AbsHaskall
 import PrintHaskall
 import Data.List (intercalate)
+import Data.Maybe
 
 -- Error Handling
 
@@ -83,32 +84,60 @@ instance Show Value where
     show (FunVal args types env st exp tp) =
         "fun (" ++ (intercalate ", " args) ++ ") = " ++ (printTree exp)
 
+type TryValue = Either Exception Value
+type Operator = Value -> Value -> TryValue
+
+unright (Right r) = r
+
 int  (IntVal i)  = i
 bool (BoolVal b) = b
 
+liftValOp :: (a->b->c) -> (Value->a) -> (Value->b) -> (c->Value) -> Value -> Value -> Value
 liftValOp f unp1 unp2 pck v1 v2 = pck $ f (unp1 v1) (unp2 v2)
 
-valAdd = liftValOp (+) int int IntVal
-valMul = liftValOp (*) int int IntVal
-valSub = liftValOp (-) int int IntVal
-valDiv = liftValOp (div) int int IntVal
+valAdd v1 v2 = Right (liftValOp (+) int int IntVal v1 v2)
+valMul v1 v2 = Right (liftValOp (*) int int IntVal v1 v2)
+valSub v1 v2 = Right (liftValOp (-) int int IntVal v1 v2)
+valDiv v1 v2 = case v2 of
+    IntVal 0 -> Left ZeroDivisionException
+    _ -> Right $ liftValOp (div) int int IntVal v1 v2
 
-valLt = liftValOp (<) int int BoolVal
 
-valIntEq = liftValOp (==) int int BoolVal
-valBoolEq = liftValOp (==) bool bool BoolVal
+valEq v1 v2 = case (v1,v2) of
+    (IntVal i1, IntVal i2) -> Right $ BoolVal $ i1 == i2
+    (BoolVal b1, BoolVal b2) -> Right $ BoolVal $ b1 == b2
 
+valLt v1 v2 = Right $ liftValOp (<) int int BoolVal v1 v2
 
 -- ENVIRONMENT
 
+type EnvElem = (Integer, VType)
+
+
+
 data Env = Env {
-    keys :: Map String (Integer, VType)
+    keys :: Map String EnvElem
     } deriving (Eq, Ord)
 
 instance Show Env where
     show env = let
         inShow (name, (pos, tp)) = name ++ " : " ++ (show tp)
         in intercalate "\n" $ map inShow $ toList $ keys env
+
+emptyEnv = Env empty
+
+lookupEnv var env = Data.Map.lookup var (keys env)
+getFromEnv var env = fromJust $ lookupEnv var env
+
+lookupLoc var env = fmap fst (lookupEnv var env)
+lookupType var env = fmap snd (lookupEnv var env)
+
+getLoc var env = fromJust $ lookupLoc var env
+getType var env = fromJust $ lookupType var env
+
+addToEnv var loc tp env = Env (insert var (loc,tp) (keys env))
+
+-- STATE
 
 data State = State {
     nextKey :: Integer,
@@ -120,11 +149,57 @@ instance Show State where
         (\(k,v) -> (show k) ++ " : " ++ (show v))
         $ toList $ store s)
 
-emptyEnv = Env empty
 emptyState = State 0 empty
 
+lookupStore loc st = Data.Map.lookup loc (store st)
+getFromStore loc st = fromJust $ lookupStore loc st
+
+addToStore :: Value -> State -> (Integer, State)
+addToStore val st = let
+        loc = nextKey st
+    in (loc, State (loc+1) (insert loc val (store st)))
+
+addEmptyToStore st = let loc = nextKey st in (loc, State (loc+1) (store st))
+
+setInStore val loc st = State (nextKey st) (insert loc val (store st))
+
+------------------------
+
+lookupVarValue var env st = fmap (flip lookupStore $ st) (lookupLoc var env)
+
+createVar var tp env val st = let
+        (loc, newSt) = addToStore val st
+        newEnv = addToEnv var loc tp env
+    in (newEnv, newSt)
+
+createEmptyVar var tp env st = let
+        (loc, newSt) = addEmptyToStore st
+        newEnv = addToEnv var loc tp env
+    in (newEnv, newSt)
+
+getVarValue var env st = getFromStore (getLoc var env) st
+setVarValue var env val st = setInStore val (getLoc var env) st
+
+setValues [] env st = st
+setValues ((var, val):rest) env st =
+    setValues rest env (setVarValue var env val st)
+
+{-
 insertStore k v s = State (nextKey s) (insert k v (store s))
 lookupStore k s = Data.Map.lookup k (store s)
+
+insertLoc var env loc tp = Env (insert var (loc,tp) (keys env))
+lookupLoc var env = fst . fromJust $ Data.Map.lookup var (keys env)
+
+getVarValue :: String -> Env -> State -> Value
+getVarValue var env st = fromJust $ lookupStore (lookupLoc var env) st
+
+addNewVar :: String -> Env -> VType -> Value -> State -> (Env,State)
+addNewVar var env tp val st = let
+        loc = nextKey st
+        newEnv = insertLoc var env loc tp
+        newSt = State (loc+1) (insert var val $ store st)
+    in (newEnv, newSt)
 
 getVarType var env = case Data.Map.lookup var (keys env) of
     Nothing -> Left $ NotDeclaredException var env
@@ -159,3 +234,5 @@ setVars [] en st = Right st
 setVars ((var, val) : tl) en st = case setVar var en val st of
     Left err -> Left err
     Right nst -> setVars tl en nst
+    
+    -}

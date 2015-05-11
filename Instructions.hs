@@ -2,7 +2,7 @@ module Instructions where
 import AbsHaskall
 import Expressions
 import Environment
-
+{-
 evalStm :: Env -> Stm -> State -> Either Exception State
 
 evalStm en SPass s = Right s
@@ -43,4 +43,4 @@ evalStmList en (h:t) s = case evalStm en h s of
     Left err -> Left err
     Right s2 -> evalStmList en t s2
 
-
+-}

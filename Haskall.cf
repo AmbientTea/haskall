@@ -14,22 +14,29 @@ separator Type ",";
 separator Exp "," ;
 
 EIf.     Exp  ::= "iff" Exp1 "then" Exp1 "else" Exp1 ;
-ELet.    Exp  ::= "let" [Decl] "in" Exp1 ;
+ELet.    Exp  ::= "let" [FSDec] "in" Exp1 ;
 EEq.     Exp1 ::= Exp1 "==" Exp1 ;
 ELt.     Exp1 ::= Exp1 "<"  Exp1 ;
 EAdd.    Exp2 ::= Exp2 "+" Exp3 ;
 ESub.    Exp2 ::= Exp2 "-" Exp3 ;
 EMul.    Exp3 ::= Exp3 "*" Exp4 ;
 EDiv.    Exp3 ::= Exp3 "/" Exp4 ;
-Call.    Exp4 ::= Ident "(" [Exp] ")" ;
+Call.    Exp4 ::= Exp "(" [Exp] ")" ;
 EVar.    Exp4 ::= Ident ;
 EInt.    Exp4 ::= Integer ;
 ETrue.   Exp4 ::= "true" ;
 EFalse.  Exp4 ::= "false" ;
-EFunc.   Exp4 ::= "fun" "(" [TDecl] ")" ":" Type "=" Exp ;
-ENFunc.  Exp4 ::= "fun" Ident "(" [TDecl] ")" ":" Type "=" Exp ;
+EFunc.   Exp4 ::= "fun" "(" [ArgDec] ")" ":" Type "=" Exp ;
+ENFunc.  Exp4 ::= "fun" Ident "(" [ArgDec] ")" ":" Type "=" Exp ;
 
 coercions Exp 5 ;
+
+FSUnTDec. FSDec ::= Ident "=" Exp ;
+FSTDec.   FSDec ::= Ident ":" Type "=" Exp ;
+separator FSDec "," ;
+
+TArgDec. ArgDec ::= Ident ":" Type ;
+separator ArgDec "," ;
 
 TDec.   TDecl     ::= Ident ":" Type ;
 UnTDec. TDecl     ::= Ident ;

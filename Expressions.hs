@@ -147,15 +147,15 @@ eval e en s = let topExpType = typeExp e en in case topExpType of
             else let
                     (names, types) = evalTDecList decls
                     func = case topExpType of
-                        Right (FuncType _ tp) -> FunVal names types en exp tp
+                        Right (FuncType _ tp) -> FunVal names types en s exp tp
                 in Right func
         Call (Ident fun) exps -> case getVar fun en s of
             Left err -> Left err
-            Right (FunVal names types fenv fexp ftp) ->
+            Right (FunVal names types fenv fst fexp ftp) ->
                 case evalList exps en s of
                     Left err -> Left err
                     Right vals -> let
-                            (funEnv, funSt) = createVars (names, types) fenv s
+                            (funEnv, funSt) = createVars (names, types) fenv fst
                         in case setVars (zip names vals) funEnv funSt of
                             Left err -> Left err
                             Right funSt2 -> eval fexp funEnv funSt2

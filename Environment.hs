@@ -63,7 +63,7 @@ instance Show VType where
     
 typeValue (IntVal _)  = IntType
 typeValue (BoolVal _) = BoolType
-typeValue (FunVal names types env exp tp) = FuncType types tp
+typeValue (FunVal names types env st exp tp) = FuncType types tp
 
 typeToken TInt = IntType
 typeToken TBool = BoolType
@@ -74,13 +74,13 @@ typeToken (TFunc types tp) = FuncType (map typeToken types) (typeToken tp)
 data Value =
     IntVal Integer
     | BoolVal Bool
-    | FunVal [String] [VType] Env Exp VType
+    | FunVal [String] [VType] Env State Exp VType
     deriving (Eq, Ord)
 
 instance Show Value where
     show (IntVal i) = show i
     show (BoolVal b) = show b
-    show (FunVal args types env exp tp) =
+    show (FunVal args types env st exp tp) =
         "fun (" ++ (intercalate ", " args) ++ ") = " ++ (printTree exp)
 
 int  (IntVal i)  = i

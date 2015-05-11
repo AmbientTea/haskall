@@ -8,9 +8,10 @@ Krótki opis języka:
 Język stanowi luźne połączenie języków imperatywnych w stylu pascala z językami
 funkcyjnymi(dlatego nazywa się haskall). Funkcje w języku są czyste (nie
 zmieniają stanu) i traktowane są jako zwyczajne wartości, w szczególności mogą
-być podawane jako argumenty innych funkcji (póki co nie obsługiwane są
-domknięcia). Obsługiwane typy to int oraz ból + wszystkie typy funkcyjne, które
-można na ich podstawie zbudować.
+być podawane jako argumenty innych funkcji. 
+
+Obsługiwane typy to int oraz ból + wszystkie typy funkcyjne, które można na
+ich podstawie zbudować.
 
 Język posiada standardowe funkcyjne konstrukcje z wyrażeń:
     + iff-then-else
@@ -41,3 +42,6 @@ Interpreter przyjmuje dwa rodzaje wejścia:
     + wyrażenie do obliczenia, dla którego wypisuje wartość
     + instrukcję(dowolną, ale najwięcej sensu robi oczywiście blok), dla której
       wypisuje stan końcowy
+
+Zapożyczenia:
+Gramatyka w dużej mierze zapożyczona z gramatyki c-- z tutoriala dla bnfc.

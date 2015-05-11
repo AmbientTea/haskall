@@ -1,10 +1,10 @@
 ;; funkcje jako argumenty/wartosci funkcji
 
 let
-    var fork = fun( f1: (int)=>int, f2: (int)=>int, f3: (int,int)=>int) :
+    fork = fun( f1: (int)=>int, f2: (int)=>int, f3: (int,int)=>int) :
         (int,int) => int =
         fun(x: int, y: int) : int = f3( f1(x), f2(y) ),
-    var sq = fun( x: int ) : int = x*x,
-    var sum = fun( x: int, y: int ) : int = x + y,
-    var sumOfSquares = fork(sq, sq, sum)
+    sq = fun( x: int ) : int = x*x,
+    sum = fun( x: int, y: int ) : int = x + y,
+    sumOfSquares = fork(sq, sq, sum)
 in sumOfSquares (3,5) + 8 ;; 42

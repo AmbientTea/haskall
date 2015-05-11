@@ -11,40 +11,15 @@ import Data.Maybe
 data Exception =
     Exception String
     | NestedException Exception String
-    | TypingException VType VType Exp
-    | ConditionException Exp VType
-    | UntypedArgumentException Exp
-    | BadArgumentsException [Exp] [VType] String VType 
     | ZeroDivisionException
-    | NotDeclaredException String Env
     | UninitializedException String
-    | AssignmentTypeException String VType Value VType
-    -- | NotDeclaredException
 
 instance Show Exception where
     show (Exception mess) = "exception : " ++ mess
     show (NestedException ex mess) = mess ++ ", caused by: " ++ (show ex)
-    show (TypingException expT realT expr) =
-        "typing error: expected type " ++ (show expT) ++ " but expression " ++
-        (printTree expr) ++ " has type " ++ (show realT)
-    show (ConditionException exp tp) = 
-        "typing error: expression " ++ (printTree exp) ++ " of type " ++
-        (show tp) ++ " as condition in if/loop"
-    show (UntypedArgumentException exp) =
-        "untyped arguments in function " ++ (printTree exp) ++
-        " are now allowed"
-    show (BadArgumentsException args types fun tp) =
-        "cannot apply arguments " ++ (intercalate ", " $ map printTree args)
-        ++ " of types " ++ (intercalate ", " $ map show types) ++
-        " to function " ++ fun ++ " of type " ++ (show tp)
     show (ZeroDivisionException) = "division by 0"
-    show (NotDeclaredException var env) = "variable " ++ var ++
-        " not declared in env: \n" ++ (show env)
     show (UninitializedException var) = "variable " ++ var ++ " accessed but "
         ++ "not initialized"
-    show (AssignmentTypeException var vtp val vatp) = "cannot assign value "
-        ++ (show val) ++ " of type " ++ (show vatp) ++ " to variable " ++ var
-        ++ " of type " ++ (show vtp)
 
 throw str = Left $ Exception str
 

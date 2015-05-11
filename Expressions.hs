@@ -6,6 +6,10 @@ import PrintHaskall
 import Data.Either
 import Data.List
 
+compileExpression exp env = case typeExp exp env of
+        Right (expType, typedExp) -> Right $ compExp env exp
+        Left err -> Left err
+
 -- DECLARATIONS
 
 -- function arguments
@@ -19,11 +23,159 @@ addArguments (arg:rest) env st = let (newEnv, newSt) = addArgument arg env st
 argTypes args = map (\(TArgDec _ tp) -> typeToken tp) args
 argNames args = map (\(TArgDec (Ident arg) _) -> arg) args
 
+-- TYPING
+
+data TypingError = 
+    UnexpectedTypeError VType VType Exp
+    | ConditionTypingError Exp VType
+    | UntypedArgumentError Exp
+    | ArgumentTypingError [Exp] [VType] Exp VType
+    | AssignmentTypingError String VType Exp VType
+    | NotDeclaredError String Env
+    
+    | IfTypingError Exp VType VType
+    | EqTypingError Exp VType VType
+    | NotAFunctionError Exp VType
+    | FunctionTypeError Exp VType VType
+
+instance Show TypingError where
+    show (UnexpectedTypeError expT realT expr) =
+        "typing error: expected type " ++ (show expT) ++ " but expression " ++
+        (printTree expr) ++ " has type " ++ (show realT)
+    show (ConditionTypingError exp tp) = 
+        "typing error: expression " ++ (printTree exp) ++ " of type " ++
+        (show tp) ++ " as condition in if/loop"
+    show (UntypedArgumentError exp) =
+        "typing error: untyped arguments in function " ++ (printTree exp) ++
+        " are now allowed"
+    show (ArgumentTypingError args types fun tp) =
+        "cannot apply arguments " ++ (intercalate ", " $ map printTree args)
+        ++ " of types " ++ (intercalate ", " $ map show types) ++
+        " to function " ++ (printTree fun) ++ " of type " ++ (show tp)
+    show (AssignmentTypingError var vtp val vatp) = "cannot assign value "
+        ++ (show val) ++ " of type " ++ (show vatp) ++ " to variable " ++ var
+        ++ " of type " ++ (show vtp)
+    show (NotDeclaredError var env) = "variable " ++ var ++
+        " not declared in env: \n" ++ (show env)
+    show (IfTypingError exp tp1 tp2) = "typing error: two branches of an if "
+        ++ "statement " ++ (printTree exp) ++ " have different types " ++
+        (show tp1) ++ " and " ++ (show tp2)
+    show (EqTypingError exp tp1 tp2) = "typing error: cannot compare values "
+        ++ "of types " ++ (show tp1) ++ " and " ++ (show tp2) ++ " in " ++
+        (printTree exp)
+    show (NotAFunctionError exp tp) = "typing error: expression " ++
+        (printTree exp) ++ " of type " ++ (show tp) ++ " is not a function"
+    show (FunctionTypeError exp tp1 tp2) = "typing error: function " ++
+        (printTree exp) ++ " declares type " ++ (show tp1) ++ " but has type "
+        ++ (show tp2)
+
+expectType tp exp env = case typeExp exp env of
+    Left err -> Left err
+    Right (expType, typedExp) -> if tp == expType
+        then Right $ (expType, typedExp)
+        else Left $ UnexpectedTypeError tp expType exp
+
+typeBoth e1 e2 t1 t2 tf c env = case expectType t1 e1 env of
+    Left err -> Left err
+    Right (_, exp1) -> case expectType t2 e2 env of
+        Left err -> Left err
+        Right (_, exp2) -> Right (tf, c exp1 exp2)
+
+typeExpList :: [Exp] -> Env -> Either TypingError [(VType, Exp)]
+typeExpList exps env = let types = map (flip typeExp env) exps in
+    case lefts types of
+        [] -> Right $ rights types
+        lst -> Left $ head lst
+
+-- check whether expression types properly in env and returns the type and
+-- full-typed version of this expression
+typeExp :: Exp -> Env -> Either TypingError (VType,Exp)
+
+typeExp (EIf cond e1 e2) env = case typeExp cond env of
+    Left err -> Left err
+    Right (condType, typedCond) -> if condType /= BoolType
+        then Left $ ConditionTypingError (EIf cond e1 e2) condType
+        else case (typeExp e1 env, typeExp e2 env) of
+            (Left err, _) -> Left err
+            (_, Left err) -> Left err
+            (Right (type1, exp1), Right (type2, exp2)) -> if type1 == type2
+                then Right (type1, EIf typedCond exp1 exp2)
+                else Left $ IfTypingError (EIf cond e1 e2) type1 type2
+
+{-
+typeExp (ELt e1 e2) env = case expectType IntType e1 env of
+    Left err -> Left err
+    Right (_, exp1) -> case expectType IntType e2 env of
+        Left err -> Left err
+        Right (_, exp2) -> Right (BoolType, ELt exp1 exp2)
+-}
+
+typeExp (ELt e1 e2) env = typeBoth e1 e2 IntType IntType BoolType ELt env
+typeExp (EEq e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
+    (Right (type1, exp1), Right (type2, exp2)) -> case (type1,type2) of
+        (IntType,IntType)   -> Right (BoolType, EEq exp1 exp2)
+        (BoolType,BoolType) -> Right (BoolType, EEq exp1 exp2)
+        _ -> Left $ EqTypingError (EEq e1 e2) type1 type2
+    (Left err, _) -> Left err
+    (_, Left err) -> Left err
+
+typeExp (EFunc args tp exp) env = let
+        (funEnv, funSt) = addArguments args env emptyState
+        eType = typeToken tp
+    in case typeExp exp funEnv of
+        Left err -> Left err
+        Right (funType, typedExp) -> if funType == eType
+            then Right (FuncType (argTypes args) eType, EFunc args tp typedExp)
+            else Left $ FunctionTypeError (EFunc args tp exp) eType funType
+
+typeExp (ENFunc (Ident fun) args tp exp) env = let
+        atypes = argTypes args
+        funEnv = addToEnv fun 0 (FuncType atypes (typeToken tp)) env
+    in case typeExp (EFunc args tp exp) env of
+        Left err -> Left err
+        Right (funType, (EFunc args tp exp)) ->
+            Right (funType, ENFunc (Ident fun) args tp exp)
+
+typeExp (Call funExp args) env = case typeExp funExp env of
+    Left err -> Left err
+    Right (FuncType types retTp, typedFunExp) -> case typeExpList args env of
+        Left err -> Left err
+        Right argTpList -> let (argTypes, typedArgs) = unzip argTpList in
+            if argTypes == types
+                then Right $ (retTp, Call typedFunExp typedArgs)
+                else Left $ ArgumentTypingError args argTypes funExp (FuncType types retTp)
+    Right (tp, exp) -> Left $ NotAFunctionError exp tp
+
+
+{-
+compExp env (EFunc decls tp exp) st = let
+        (funEnv, funSt) = addArguments decls env st
+    in Right $ FunVal (argNames decls) (argTypes decls) funEnv
+                                                    funSt exp (typeToken tp)
+-}
+{-
+typeExp (EFunc args tp exp) env = let
+        argTypes = typeExpList args env
+    in if argTypes
+  -}  
+
+typeExp (EAdd e1 e2) env = typeBoth e1 e2 IntType IntType IntType EAdd env
+typeExp (ESub e1 e2) env = typeBoth e1 e2 IntType IntType IntType ESub env
+typeExp (EMul e1 e2) env = typeBoth e1 e2 IntType IntType IntType EMul env
+typeExp (EDiv e1 e2) env = typeBoth e1 e2 IntType IntType IntType EDiv env
+
+typeExp e env = Right $ case e of
+    ETrue  -> (BoolType, e)
+    EFalse -> (BoolType, e)
+    EInt i -> (IntType, e)
+    EVar (Ident var) -> (getType var env, e)
+    
+
+
+
+
 {-
 -- typed
-allTyped ((TDec _ _):t) = allTyped t
-allTyped ((UnTDec _):t) = False
-allTyped [] = True
 
 evalTDecl (TDec (Ident var) tp) = (var, typeToken tp)
 
@@ -146,6 +298,8 @@ typeExps exps en = let types = map (flip typeExp en) exps in
 -}
 -- evaluations
 
+-- SEMANTICS
+
 eitherPair f e1 e2 = case (e1,e2) of (Right v1, Right v2) -> f v1 v2
 
 intOp env op e1 e2 st =
@@ -208,10 +362,10 @@ compExp env (Call fexp exps) st = case compExp env fexp st of
             
         
 
-
+{-
 eval :: Exp -> Env -> State -> Either Exception Value
 eval e en s = undefined
-{-
+
 
         EFunc decls tp exp -> if not $ allTyped decls
             then Left $ UntypedArgumentException e
@@ -245,7 +399,7 @@ eval e en s = undefined
                             Right funSt2 -> eval fexp funEnv funSt2
             Right _ -> Left $ Exception ("something horrible happened and" ++
                          "now i need to uninstall haskell")
--}
+
 
 evalList :: [Exp] -> Env -> State -> Either Exception [Value]
 evalList [] _ _ = Right []
@@ -255,7 +409,7 @@ evalList (h:t) en st = case eval h en st of
         Left err -> Left err
         Right lst -> Right (val:lst)
 
-
+-}
 
 
 

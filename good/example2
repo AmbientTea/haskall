@@ -1,0 +1,8 @@
+let
+    var f1 = fun(x : int) : int = x * 2,
+    var f2 = fun(x : int) : int = x + 4,
+    var apply = fun(f : (int) => int, x : int ) : int = f(x),
+    var ff = fun( f1 : (int) => int, f2 : (int) => int, x : int ) : int = 
+            iff 5 < x then f1(x) else f2(x),
+    var x : int = 0
+in ff( f1, f2, 6 )  

@@ -21,9 +21,9 @@ parseIt input = case pProgram $! myLexer input of
         Eval exp -> case compileExpression exp emptyEnv of
             Right v -> show (v emptyState)
             Left er -> show er
-        Prog stm -> "dupa"--case evalStm emptyEnv stm emptyState of
-            --Right s -> show s
-            --Left er -> show er
+        Prog stm -> case compileProgram stm emptyEnv of
+            Right (_,v) -> show (v emptyState)
+            Left er -> show er
 
 main :: IO ()
 main = do

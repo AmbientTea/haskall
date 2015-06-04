@@ -9,13 +9,27 @@ data CompileError =
     TypeCompileError TypingError
     | VarNotDeclared String Env
     | BadAssignment String VType Exp VType
+    | BadLoopCondition Exp VType
 
 instance Show CompileError where
     show (TypeCompileError err) = show err
 
+compileProgram pr env = compSt env pr
+
+
 typeStm :: Stm -> Env -> Either CompileError (Env,Prog)
 typeStm SPass env = Right (env, Right)
 
+
+evalStmList :: Env -> [Stm] -> Either CompileError (Env,Prog)
+evalStmList env [] = Right (env,\s -> Right s)
+evalStmList env (stm:stmRest) = case compSt env stm of
+    Left err -> Left err
+    Right (newEnv, pr) -> case evalStmList newEnv stmRest of
+        Left err -> Left err
+        Right (fEnv, fPr) -> Right (fEnv, \s -> case pr s of
+                    Left err -> Left err
+                    Right s -> fPr s)
 
 compSt :: Env -> Stm -> Either CompileError (Env,Prog)
 compSt env SPass = Right $ (env, \s -> Right s)
@@ -32,7 +46,50 @@ compSt env (SAssign (Ident var) exp) = case typeExp exp env of
 compSt env (STDecl (Ident var) tpTok exp) =
     case expectType (typeToken tpTok) exp env of
         Left err -> Left $ TypeCompileError err
-        Right (expTp, tpExp) -> undefined
+        Right (expTp, tpExp) -> let
+                (loc,newEnv) = addToEnv var expTp env
+            in Right (newEnv, \s -> case compExp newEnv tpExp s of
+                Left err -> Left err
+                Right v -> Right $ setInStore v loc s)
+
+compSt env (SUnTDecl (Ident var) exp) =
+    case typeExp exp env of
+        Left err -> Left $ TypeCompileError err
+        Right (expTp, tpExp) -> let
+                (loc,newEnv) = addToEnv var expTp env
+            in Right (newEnv, \s -> case compExp newEnv tpExp s of
+                Left err -> Left err
+                Right v -> Right $ setInStore v loc s)
+
+compSt env (SBlock stmts) = evalStmList env stmts
+
+compSt env (SWhile exp stm) = case typeExp exp env of
+    Left err -> Left $ TypeCompileError err
+    Right (expTp, tpExp) -> if expTp /= BoolType
+        then Left $ BadLoopCondition exp expTp
+        else case compSt env stm of
+            Left err -> Left err
+            Right (_, pr) -> let
+                    loop s = case compExp env tpExp s of
+                        Left err -> Left err
+                        Right (BoolVal False) -> Right s
+                        Right (BoolVal True )  -> case pr s of
+                            Left err -> Left err
+                            Right s2 -> loop s2
+                in Right (env, loop)
+
+compSt env (SIf exp stm1 stm2) = case typeExp exp env of
+    Left err -> Left $ TypeCompileError err
+    Right (expTp, tpExp) -> if expTp /= BoolType
+        then Left $ BadLoopCondition exp expTp
+        else case (compSt env stm1, compSt env stm2) of
+            (Left err,_) -> Left err
+            (_,Left err) -> Left err
+            (Right (_,pr1), Right (_,pr2)) ->
+                    Right (env, \s -> case compExp env tpExp s of
+                        Left err -> Left err
+                        Right (BoolVal False) -> pr1 s
+                        Right (BoolVal True ) -> pr2 s)
 
 {-
 evalStm :: Env -> Stm -> State -> Either Exception State

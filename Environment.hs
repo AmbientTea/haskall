@@ -1,6 +1,6 @@
 module Environment where
 
-import Data.Map (Map, insert, lookup, empty, toList)
+import Data.Map (Map, insert, lookup, empty, toList, fromList)
 import AbsHaskall
 import PrintHaskall
 import Data.List (intercalate)
@@ -32,6 +32,12 @@ data VType =
     | FuncType [VType] VType
     deriving (Eq, Ord)
 
+inbuiltTypes = fromList [
+        ("int", IntType),
+        ("bool", BoolType),
+        ("string", StringType)
+    ]
+
 instance Show VType where
     show IntType = "int"
     show BoolType = "bool"
@@ -44,14 +50,10 @@ typeValue (BoolVal _) = BoolType
 typeValue (StringVal _) = StringType
 typeValue (FunVal names types env st exp tp) = FuncType types tp
 
-typeToken TInt = IntType
-typeToken TBool = BoolType
-typeToken TString = StringType
-typeToken (TFunc types tp) = FuncType (map typeToken types) (typeToken tp)
-
-typeToToken IntType = TInt
-typeToToken BoolType = TBool
-typeToToken StringType = TString
+typeToToken :: VType -> Type
+typeToToken IntType = TType (Ident "int")
+typeToToken BoolType = TType (Ident "bool")
+typeToToken StringType = TType (Ident "string")
 typeToToken (FuncType args tp) = TFunc (map typeToToken args) (typeToToken tp)
 
 -- VALUES
@@ -104,7 +106,8 @@ type EnvElem = (Integer, VType)
 
 data Env = Env {
     nextKey :: Integer,
-    keys :: Map String EnvElem
+    keys :: Map String EnvElem,
+    types :: Map String VType
     } deriving (Eq, Ord)
 
 instance Show Env where
@@ -112,7 +115,7 @@ instance Show Env where
         inShow (name, (pos, tp)) = name ++ " : " ++ (show tp)
         in intercalate "\n" $ map inShow $ toList $ keys env
 
-emptyEnv = Env 0 empty
+emptyEnv = Env 0 empty inbuiltTypes
 
 lookupEnv var env = Data.Map.lookup var (keys env)
 getFromEnv var env = fromJust $ lookupEnv var env
@@ -123,8 +126,10 @@ lookupType var env = fmap snd (lookupEnv var env)
 getLoc var env = fromJust $ lookupLoc var env
 getType var env = fromJust $ lookupType var env
 
-addToEnv var tp env =
-    (nextKey env, Env ((nextKey env) + 1) (insert var (nextKey env,tp) (keys env)))
+addToEnv var tp env = (nextKey env,
+                     Env ((nextKey env) + 1)
+                          (insert var (nextKey env,tp) (keys env))
+                          (types env))
 
 -- STATE
 

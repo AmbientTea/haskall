@@ -2,9 +2,29 @@ module Expressions where
 import AbsHaskall
 import Environment
 import PrintHaskall
+import Data.Map (Map, insert, lookup, empty, toList, fromList)
 
 import Data.Either
 import Data.List
+
+lookupTypeDef :: Env -> Type -> Either TypingError VType
+lookupTypeDef env (TFunc args tpt) = case lookupTypeDef env tpt of
+    Left err -> Left err
+    Right tp -> case lookupTypeDefs env args of
+        Left err -> Left err
+        Right argTps -> Right $ FuncType argTps tp
+
+lookupTypeDef env (TType (Ident tpn)) =
+    case Data.Map.lookup tpn (types env) of
+        Nothing -> Left $ UnknownType tpn
+        Just tp -> Right tp
+
+lookupTypeDefs _ [] = Right []
+lookupTypeDefs env (tpt:rest) = case lookupTypeDef env tpt of
+    Left err -> Left err
+    Right tp -> case lookupTypeDefs env rest of
+        Left err -> Left err
+        Right tps -> Right $ tp : tps
 
 compileExpression :: Exp -> Env -> Either TypingError (State -> TryValue)
 compileExpression exp env = case typeExp exp env of
@@ -15,16 +35,26 @@ compileExpression exp env = case typeExp exp env of
 -- DECLARATIONS
 
 -- function arguments
-addArgument :: ArgDec -> Env -> Env
-addArgument (TArgDec (Ident arg) tp) env = createEmptyVar arg (typeToken tp) env
+addArgument :: ArgDec -> Env -> Either TypingError Env
+addArgument (TArgDec (Ident arg) tpt) env =
+    case lookupTypeDef env tpt of
+        Left err -> Left err
+        Right tp -> Right $ createEmptyVar arg tp env
 
-addArguments :: [ArgDec] -> Env -> Env
-addArguments [] env = env
-addArguments (arg:rest) env = let
-        newEnv= addArgument arg env
-    in addArguments rest newEnv
+addArguments :: [ArgDec] -> Env -> Either TypingError Env
+addArguments [] env = Right env
+addArguments (arg:rest) env = case addArgument arg env of
+    Left err -> Left err
+    Right newEnv -> addArguments rest newEnv
 
-argTypes args = map (\(TArgDec _ tp) -> typeToken tp) args
+argTypes env [] = Right []
+argTypes env (TArgDec (Ident arg) tpt:args) =
+    case lookupTypeDef env tpt of
+        Left err -> Left err
+        Right tp -> case argTypes env args of
+            Left err -> Left err
+            Right ftps -> Right $ tp:ftps   
+
 argNames args = map (\(TArgDec (Ident arg) _) -> arg) args
 
 
@@ -44,6 +74,7 @@ data TypingError =
     | FunctionTypeError Exp VType VType
     | TypingError String
     | AddTypeError Exp VType VType
+    | UnknownType String
 
 untype str = Left $ TypingError str
 
@@ -81,6 +112,7 @@ instance Show TypingError where
     show (AddTypeError exp t1 t2) = "typing error: can not add values of " ++
         "types " ++ (show t1) ++ " and " ++ (show t2) ++ " in expression " ++
         (printTree exp)
+    show (UnknownType tp) = "typing error: unknown type " ++ (show tp)
 
 expectType tp exp env = case typeExp exp env of
     Left err -> Left err
@@ -126,22 +158,32 @@ typeExp (EEq e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
     (Left err, _) -> Left err
     (_, Left err) -> Left err
 
-typeExp (EFunc args tp exp) env = let
-        funEnv = addArguments args env
-        eType = typeToken tp
-    in case typeExp exp funEnv of
+typeExp (EFunc args tpt exp) env =
+    case argTypes env args of
         Left err -> Left err
-        Right (funType, typedExp) -> if funType == eType
-            then Right (FuncType (argTypes args) eType, EFunc args tp typedExp)
-            else Left $ FunctionTypeError (EFunc args tp exp) eType funType
+        Right argTps -> case addArguments args env of
+            Left err -> Left err
+            Right funEnv -> case lookupTypeDef env tpt of
+                Left err -> Left err
+                Right eType -> case typeExp exp funEnv of
+                    Left err -> Left err
+                    Right (funType, typedExp) -> if funType == eType
+                        then Right (FuncType argTps eType,
+                                    EFunc args tpt typedExp)
+                        else Left $ FunctionTypeError (EFunc args tpt exp)
+                                        eType funType
 
-typeExp (ENFunc (Ident fun) args tp exp) env = let
-        atypes = argTypes args
-        (_, funEnv) = addToEnv fun (FuncType atypes (typeToken tp)) env
-    in case typeExp (EFunc args tp exp) funEnv of
+typeExp (ENFunc (Ident fun) args tpt exp) env = 
+    case argTypes env args of
         Left err -> Left err
-        Right (funType, (EFunc args tp exp)) ->
-            Right (funType, ENFunc (Ident fun) args tp exp)
+        Right atypes -> case lookupTypeDef env tpt of
+            Left err -> Left err
+            Right tp -> let
+                    (_, funEnv) = addToEnv fun (FuncType atypes tp) env
+                in case typeExp (EFunc args tpt exp) funEnv of
+                    Left err -> Left err
+                    Right (funType, (EFunc args tp exp)) ->
+                        Right (funType, ENFunc (Ident fun) args tp exp)
 
 typeExp (Call funExp args) env = case typeExp funExp env of
     Left err -> Left err
@@ -164,20 +206,25 @@ typeExp (ELet (dh:decls) exp) env = let
                 Left err -> Left err
                 Right (expTp, tpExp) ->
                         Right $ FSTDec var (typeToToken expTp) tpExp
-        typeDecl (FSTDec var varTp varExp) =
-            case expectType (typeToken varTp) varExp env of
+        typeDecl (FSTDec var varTpt varExp) =
+            case lookupTypeDef env varTpt of
                 Left err -> Left err
-                Right (expTp, tpExp) ->
-                        Right $ FSTDec var (typeToToken expTp) tpExp
+                Right varTp -> case expectType varTp varExp env of
+                    Left err -> Left err
+                    Right (expTp, tpExp) ->
+                            Right $ FSTDec var (typeToToken expTp) tpExp
     in case typeDecl dh of
         Left err -> Left err
         Right tpDecl -> let
-                (FSTDec (Ident var) varTP varExp) = tpDecl
-                (loc, letEnv) = addToEnv var (typeToken varTP) env
-            in case typeExp (ELet decls exp) letEnv of
+                (FSTDec (Ident var) varTpt varExp) = tpDecl
+            in case lookupTypeDef env varTpt of
                 Left err -> Left err
-                Right (letTp, ELet fdecls fexp) ->
-                    Right $ (letTp, ELet (tpDecl:fdecls) fexp)
+                Right varTp -> let
+                        (loc, letEnv) = addToEnv var varTp env
+                    in case typeExp (ELet decls exp) letEnv of
+                        Left err -> Left err
+                        Right (letTp, ELet fdecls fexp) ->
+                            Right $ (letTp, ELet (tpDecl:fdecls) fexp)
 
 
 typeExp (EAdd e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
@@ -239,26 +286,31 @@ compExp env (EIf e1 e2 e3) st = case compExp env e1 st of
 compExp env (EVar (Ident var)) st = Right $ getVarValue var env st
 
 compExp env (ELet [] exp) st = compExp env exp st
-compExp env (ELet ((FSTDec (Ident var) tp vexp):rest) exp) st =
+compExp env (ELet ((FSTDec (Ident var) tpt vexp):rest) exp) st =
     case compExp env vexp st of
         Left err -> Left err
-        Right val -> let
-                (newEnv, newSt) = createVar var (typeToken tp) env val st
-            in compExp newEnv (ELet rest exp) newSt
+        Right val -> case lookupTypeDef env tpt of
+            Right tp -> let
+                    (newEnv, newSt) = createVar var tp env val st
+                in compExp newEnv (ELet rest exp) newSt
 
 compExp env (ELet ((FSUnTDec (Ident var) vexp):rest) exp) st = undefined
 
-compExp env (EFunc decls tp exp) st = let
-        funEnv = addArguments decls env
-    in Right $ FunVal (argNames decls) (argTypes decls) funEnv
-                                                    st exp (typeToken tp)
+compExp env (EFunc decls tpt exp) st =
+    case lookupTypeDef env tpt of
+        Right tp -> case addArguments decls env of
+            Right funEnv -> case argTypes env decls of
+                Right argTps -> Right $ FunVal (argNames decls) argTps funEnv st exp tp
 
-compExp env (ENFunc (Ident fun) decls tp exp) st = let
-        funVal = compExp funEnv (EFunc decls tp exp) funSt where
-            funType = FuncType (argTypes decls) (typeToken tp)
-            realVal = case funVal of Right v -> v
-            (funEnv, funSt) = createVar fun funType env realVal st
-    in funVal
+compExp env (ENFunc (Ident fun) decls tpt exp) st =
+    case lookupTypeDef env tpt of
+        Right tp -> case argTypes env decls of
+            Right argTps -> let
+                    funVal = compExp funEnv (EFunc decls tpt exp) funSt where
+                        funType = FuncType argTps tp
+                        realVal = case funVal of Right v -> v
+                        (funEnv, funSt) = createVar fun funType env realVal st
+                in funVal
 
 compExp env (Call fexp exps) st = case compExp env fexp st of
     Right (FunVal args types funEnv funSt body tp) -> let

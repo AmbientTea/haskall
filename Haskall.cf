@@ -4,10 +4,7 @@ comment "<;" ";>" ;
 Eval. Program  ::= Exp ;
 Prog. Program  ::= Stm ;
 
-TInt.  Type ::= "int" ;
-TBool. Type ::= "bool" ;
-TVoid. Type ::= "void" ;
-TString. Type ::= "string" ;
+TType. Type ::= Ident ;
 TFunc. Type ::= "(" [Type] ")" "=>" Type ;
 
 separator Type ",";

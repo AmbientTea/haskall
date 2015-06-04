@@ -46,13 +46,15 @@ compSt env (SAssign (Ident var) exp) = case typeExp exp env of
                 Right v -> Right $ setInStore v loc s)
 
 compSt env (STDecl (Ident var) tpTok exp) =
-    case expectType (typeToken tpTok) exp env of
+    case lookupTypeDef env tpTok of
         Left err -> Left $ TypeCompileError err
-        Right (expTp, tpExp) -> let
-                (loc,newEnv) = addToEnv var expTp env
-            in Right (newEnv, \s -> case compExp newEnv tpExp s of
-                Left err -> Left err
-                Right v -> Right $ setInStore v loc s)
+        Right tp -> case expectType tp exp env of
+            Left err -> Left $ TypeCompileError err
+            Right (expTp, tpExp) -> let
+                    (loc,newEnv) = addToEnv var expTp env
+                in Right (newEnv, \s -> case compExp newEnv tpExp s of
+                    Left err -> Left err
+                    Right v -> Right $ setInStore v loc s)
 
 compSt env (SUnTDecl (Ident var) exp) =
     case typeExp exp env of

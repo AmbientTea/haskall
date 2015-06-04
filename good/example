@@ -1,12 +1,10 @@
 begin
-    ;; sekcja deklaracji
-	var x : int = 10,
-	var y : int = 3,
-	var f : (int,int) => int = fun(x : int, y : int) : int = x + y,
-	var z : int = 0,
+	var x : int = 10;
+	var y : int = 3;
+	var f : (int,int) => int = fun(x : int, y : int) : int = x + y;
+	var z : int = 0;
 	var c = 0
 	
-	;; sekcja instrukcji
 	if z == 0 then x = 5 else x = f(5,6) fi;
 	while c < 10 do
 	    begin
@@ -20,7 +18,7 @@ begin
 	            end
             done
 	    end
-	done
+	done;
 	
 	if z == 100 then y = 42 else procrastinate fi
 	

@@ -38,24 +38,20 @@ separator FSDec "," ;
 TArgDec. ArgDec ::= Ident ":" Type ;
 separator ArgDec "," ;
 
-TDec.   TDecl     ::= Ident ":" Type ;
-UnTDec. TDecl     ::= Ident ;
-separator  TDecl "," ;
-terminator TDecl "" ;
 
-VDecl.  Decl ::= "var" TDecl "=" Exp ;
 
-separator  Decl "," ;
-terminator Decl "" ;
+
 
 separator  Stm ";" ;
 terminator Stm "" ;
 
-SIf.     Stm ::= "if" Exp "then" Stm1 "else" Stm1 "fi";
-SWhile.  Stm ::= "while" Exp "do" Stm1 "done" ;
-SAssign. Stm1 ::= Ident "=" Exp ;
-SPass.   Stm1 ::= "procrastinate" ;
-SBlock.  Stm2 ::= "begin" [Decl] [Stm] "end" ;
+SIf.      Stm ::= "if" Exp "then" Stm1 "else" Stm1 "fi";
+SWhile.   Stm ::= "while" Exp "do" Stm1 "done" ;
+STDecl.   Stm1 ::= "var" Ident ":" Type "=" Exp ;
+SUnTDecl. Stm1 ::= "var" Ident "=" Exp ;
+SAssign.  Stm1 ::= Ident "=" Exp ;
+SPass.    Stm1 ::= "procrastinate" ;
+SBlock.   Stm2 ::= "begin" [Stm] "end" ;
 
 coercions Stm 2 ;
 

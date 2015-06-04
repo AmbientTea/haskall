@@ -95,6 +95,7 @@ type EnvElem = (Integer, VType)
 
 
 data Env = Env {
+    nextKey :: Integer,
     keys :: Map String EnvElem
     } deriving (Eq, Ord)
 
@@ -103,7 +104,7 @@ instance Show Env where
         inShow (name, (pos, tp)) = name ++ " : " ++ (show tp)
         in intercalate "\n" $ map inShow $ toList $ keys env
 
-emptyEnv = Env empty
+emptyEnv = Env 0 empty
 
 lookupEnv var env = Data.Map.lookup var (keys env)
 getFromEnv var env = fromJust $ lookupEnv var env
@@ -114,12 +115,12 @@ lookupType var env = fmap snd (lookupEnv var env)
 getLoc var env = fromJust $ lookupLoc var env
 getType var env = fromJust $ lookupType var env
 
-addToEnv var loc tp env = Env (insert var (loc,tp) (keys env))
+addToEnv var tp env =
+    (nextKey env, Env ((nextKey env) + 1) (insert var (nextKey env,tp) (keys env)))
 
 -- STATE
 
 data State = State {
-    nextKey :: Integer,
     store :: Map Integer Value
     } deriving (Eq, Ord)
 
@@ -128,40 +129,36 @@ instance Show State where
         (\(k,v) -> (show k) ++ " : " ++ (show v))
         $ toList $ store s)
 
-emptyState = State 0 empty
+emptyState = State empty
 
 lookupStore loc st = Data.Map.lookup loc (store st)
 getFromStore loc st = fromJust $ lookupStore loc st
 
-addToStore :: Value -> State -> (Integer, State)
-addToStore val st = let
-        loc = nextKey st
-    in (loc, State (loc+1) (insert loc val (store st)))
+addEmptyToStore loc st = State (store st)
 
-addEmptyToStore st = let loc = nextKey st in (loc, State (loc+1) (store st))
-
-setInStore val loc st = State (nextKey st) (insert loc val (store st))
+setInStore val loc st = State (insert loc val (store st))
 
 ------------------------
 
 lookupVarValue var env st = fmap (flip lookupStore $ st) (lookupLoc var env)
 
-createVar var tp env val st = let
-        (loc, newSt) = addToStore val st
-        newEnv = addToEnv var loc tp env
-    in (newEnv, newSt)
-
-createEmptyVar var tp env st = let
-        (loc, newSt) = addEmptyToStore st
-        newEnv = addToEnv var loc tp env
-    in (newEnv, newSt)
+createEmptyVar :: String -> VType -> Env -> Env
+createEmptyVar var tp env = let
+        (loc, newEnv) = addToEnv var tp env
+    in newEnv
 
 getVarValue var env st = getFromStore (getLoc var env) st
 setVarValue var env val st = setInStore val (getLoc var env) st
 
+setValues :: [(String,Value)] -> Env -> State -> State
 setValues [] env st = st
 setValues ((var, val):rest) env st =
     setValues rest env (setVarValue var env val st)
+
+createVar var tp env val st = let
+        (loc, newEnv) = addToEnv var tp env
+        newSt = setInStore val loc st
+    in (newEnv, newSt)
 
 {-
 insertStore k v s = State (nextKey s) (insert k v (store s))

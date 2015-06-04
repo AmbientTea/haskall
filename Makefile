@@ -1,5 +1,5 @@
 all: parser
-	ghc --make Main.hs -o interpreter
+	ghc -prof -auto-all -caf-all --make Main.hs -o interpreter
 
 parser:
 	bnfc Haskall.cf

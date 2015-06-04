@@ -15,12 +15,14 @@ compileExpression exp env = case typeExp exp env of
 -- DECLARATIONS
 
 -- function arguments
-addArgument (TArgDec (Ident arg) tp) env st =
-    createEmptyVar arg (typeToken tp) env st
+addArgument :: ArgDec -> Env -> Env
+addArgument (TArgDec (Ident arg) tp) env = createEmptyVar arg (typeToken tp) env
 
-addArguments [] env st = (env,st)
-addArguments (arg:rest) env st = let (newEnv, newSt) = addArgument arg env st
-    in addArguments rest newEnv newSt
+addArguments :: [ArgDec] -> Env -> Env
+addArguments [] env = env
+addArguments (arg:rest) env = let
+        newEnv= addArgument arg env
+    in addArguments rest newEnv
 
 argTypes args = map (\(TArgDec _ tp) -> typeToken tp) args
 argNames args = map (\(TArgDec (Ident arg) _) -> arg) args
@@ -42,6 +44,8 @@ data TypingError =
     | NotAFunctionError Exp VType
     | FunctionTypeError Exp VType VType
     | TypingError String
+
+untype str = Left $ TypingError str
 
 instance Show TypingError where
     show (UnexpectedTypeError expT realT expr) =
@@ -108,13 +112,6 @@ typeExp (EIf cond e1 e2) env = case typeExp cond env of
                 then Right (type1, EIf typedCond exp1 exp2)
                 else Left $ IfTypingError (EIf cond e1 e2) type1 type2
 
-{-
-typeExp (ELt e1 e2) env = case expectType IntType e1 env of
-    Left err -> Left err
-    Right (_, exp1) -> case expectType IntType e2 env of
-        Left err -> Left err
-        Right (_, exp2) -> Right (BoolType, ELt exp1 exp2)
--}
 
 typeExp (ELt e1 e2) env = typeBoth e1 e2 IntType IntType BoolType ELt env
 typeExp (EEq e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
@@ -126,7 +123,7 @@ typeExp (EEq e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
     (_, Left err) -> Left err
 
 typeExp (EFunc args tp exp) env = let
-        (funEnv, funSt) = addArguments args env emptyState
+        funEnv = addArguments args env
         eType = typeToken tp
     in case typeExp exp funEnv of
         Left err -> Left err
@@ -136,8 +133,8 @@ typeExp (EFunc args tp exp) env = let
 
 typeExp (ENFunc (Ident fun) args tp exp) env = let
         atypes = argTypes args
-        funEnv = addToEnv fun 0 (FuncType atypes (typeToken tp)) env
-    in case typeExp (EFunc args tp exp) env of
+        (_, funEnv) = addToEnv fun (FuncType atypes (typeToken tp)) env
+    in case typeExp (EFunc args tp exp) funEnv of
         Left err -> Left err
         Right (funType, (EFunc args tp exp)) ->
             Right (funType, ENFunc (Ident fun) args tp exp)
@@ -172,23 +169,12 @@ typeExp (ELet (dh:decls) exp) env = let
         Left err -> Left err
         Right tpDecl -> let
                 (FSTDec (Ident var) varTP varExp) = tpDecl
-                letEnv = addToEnv var 0 (typeToken varTP) env
+                (loc, letEnv) = addToEnv var (typeToken varTP) env
             in case typeExp (ELet decls exp) letEnv of
                 Left err -> Left err
                 Right (letTp, ELet fdecls fexp) ->
                     Right $ (letTp, ELet (tpDecl:fdecls) fexp)
 
-{-
-compExp env (EFunc decls tp exp) st = let
-        (funEnv, funSt) = addArguments decls env st
-    in Right $ FunVal (argNames decls) (argTypes decls) funEnv
-                                                    funSt exp (typeToken tp)
--}
-{-
-typeExp (EFunc args tp exp) env = let
-        argTypes = typeExpList args env
-    in if argTypes
-  -}  
 
 typeExp (EAdd e1 e2) env = typeBoth e1 e2 IntType IntType IntType EAdd env
 typeExp (ESub e1 e2) env = typeBoth e1 e2 IntType IntType IntType ESub env
@@ -202,132 +188,6 @@ typeExp e env = Right $ case e of
     EVar (Ident var) -> (getType var env, e)
     
 
-
-
-
-{-
--- typed
-
-evalTDecl (TDec (Ident var) tp) = (var, typeToken tp)
-
-evalTDecList :: [TDecl] -> ([String], [VType])
-evalTDecList l = unzip $ map evalTDecl l
-
--- variables
-evalDecl :: Decl -> Env -> State -> Either Exception (Env, State)
-
-evalDecl (VDecl decl e) en st = case eval e en st of
-    Left err -> Left err
-    Right val -> let
-                t = typeValue val
-                (var, expT) = case decl of
-                    TDec (Ident vr) ext -> (vr, typeToken ext)
-                    UnTDec (Ident vr) -> (vr, t)
-                (newEnv, newSt) = createVar var t en st
-                newSt2  = setVar var newEnv val newSt
-            in case newSt2 of
-                Left err -> Left err
-                Right st2 -> if t == expT
-                    then Right (newEnv, st2)
-                    else Left $ TypingException expT t e
-
-evalDeclList :: [Decl] -> Env -> State -> Either Exception (Env, State)
-evalDeclList [] e s = Right (e,s)
-evalDeclList (h:t) e s = case evalDecl h e s of
-    Left err -> Left err
-    Right (ne, ns) -> evalDeclList t ne ns
--}
-
--- 
-
--- EXPRESSIONS
-
-
--- typing expectations
-{-
-checkType t e en = case typeExp e en of
-    Left er -> Left er
-    Right t1 -> if t1 == t
-        then Right t
-        else Left $ TypingException t t1 e
-        -- else throw ((show e) ++ ", expwefwefected " ++ (show t) ++ ", got " ++ (show t1))
-
-expect t1 e t2 en = case checkType t1 e en of
-    Left er -> Left er
-    Right tt -> Right t2
-
-expect2 t1 t2 e1 e2 t3 en = case (checkType t1 e1 en, checkType t2 e2 en) of
-    (Right _, Right _) -> Right t3
-    (Left err, _) -> Left err
-    (_, Left err) -> Left err
-
--- construction typings
-
-typeExp :: Exp -> Env -> Either Exception VType
-typeExp ETrue  en   = Right BoolType
-typeExp EFalse  en  = Right BoolType
-typeExp (EInt _) en = Right IntType
-
-typeExp (EMul e1 e2) en = expect2 IntType IntType e1 e2 IntType en
-typeExp (ESub e1 e2) en = expect2 IntType IntType e1 e2 IntType en
-typeExp (EAdd e1 e2) en = expect2 IntType IntType e1 e2 IntType en
-typeExp (EDiv e1 e2) en = expect2 IntType IntType e1 e2 IntType en
-
-typeExp (EEq e1 e2) en = expect2 IntType IntType e1 e2 BoolType en
-typeExp (ELt e1 e2) en = expect2 IntType IntType e1 e2 BoolType en
-
-typeExp (EIf e1 e2 e3) en = case typeExp e1 en of
-    Left err -> Left err
-    Right t  -> if t /= BoolType
-        then Left $ ConditionException e1 t
-        else case typeExp e2 en of
-            Left err -> Left err
-            Right t2 -> expect t2 e3 t2 en
-
-typeExp (EVar (Ident var)) en = getVarType var en
-
-typeExp (ELet decls e) en = undefined
-
-{-case evalDeclList decls en emptyState of
-    Left err -> Left err
-    Right (newEnv, _) -> typeExp e newEnv -}
-
-typeExp (EFunc decls tp exp) en = if not $ allTyped decls
-    then Left $ UntypedArgumentException (EFunc decls tp exp) 
-    else let
-            (names, types) = evalTDecList decls
-            (newEnv, newSt) = createVars (names, types) en emptyState
-            t = typeToken tp
-        in expect t exp (FuncType types t) newEnv
-
-typeExp (ENFunc (Ident fun) decls tp exp) en = if not $ allTyped decls
-    then Left $ UntypedArgumentException (EFunc decls tp exp) 
-    else let
-            (names, types) = evalTDecList decls
-            t = typeToken tp
-            funType = FuncType types t
-            (newEnv, newSt) = createVars (names, types) en emptyState
-            (newEnv2, newSt2) = createVar fun funType newEnv newSt
-        in expect t exp funType newEnv2
-           -- Left $ Exception $ show $ expect t exp funType newEnv2
-           -- Left $ Exception (show newEnv2)
-
-typeExp (Call (Ident fun) exps) en = case typeExps exps en of
-    Left err -> Left err
-    Right types -> case getVarType fun en of
-        Left err -> Left err
-        Right (FuncType tps tp) -> if tps /= types
-            then Left $ BadArgumentsException exps types fun (FuncType tps tp)
-            else Right tp
-
-typeExps :: [Exp] -> Env -> Either Exception [VType]
-typeExps exps en = let types = map (flip typeExp en) exps in
-    case lefts types of
-        [] -> Right $ rights types
-        lst -> throw (intercalate "\n" (map show lst))
-
--}
--- evaluations
 
 -- SEMANTICS
 
@@ -376,9 +236,9 @@ compExp env (ELet ((FSTDec (Ident var) tp vexp):rest) exp) st =
 compExp env (ELet ((FSUnTDec (Ident var) vexp):rest) exp) st = undefined
 
 compExp env (EFunc decls tp exp) st = let
-        (funEnv, funSt) = addArguments decls env st
+        funEnv = addArguments decls env
     in Right $ FunVal (argNames decls) (argTypes decls) funEnv
-                                                    funSt exp (typeToken tp)
+                                                    st exp (typeToken tp)
 
 compExp env (ENFunc (Ident fun) decls tp exp) st = let
         funVal = compExp funEnv (EFunc decls tp exp) funSt where

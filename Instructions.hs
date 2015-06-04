@@ -2,6 +2,38 @@ module Instructions where
 import AbsHaskall
 import Expressions
 import Environment
+
+type Prog = State -> Either Exception State
+
+data CompileError =
+    TypeCompileError TypingError
+    | VarNotDeclared String Env
+    | BadAssignment String VType Exp VType
+
+instance Show CompileError where
+    show (TypeCompileError err) = show err
+
+typeStm :: Stm -> Env -> Either CompileError (Env,Prog)
+typeStm SPass env = Right (env, Right)
+
+
+compSt :: Env -> Stm -> Either CompileError (Env,Prog)
+compSt env SPass = Right $ (env, \s -> Right s)
+compSt env (SAssign (Ident var) exp) = case typeExp exp env of
+    Left err -> Left $ TypeCompileError err
+    Right (expTp, tpExp) -> case lookupEnv var env of
+        Nothing -> Left $ VarNotDeclared var env
+        Just (loc, tp) -> if tp /= expTp
+            then Left $ BadAssignment var tp exp expTp
+            else Right $ (env, \s -> case compExp env tpExp s of
+                Left err -> Left err
+                Right v -> Right $ setInStore v loc s)
+
+compSt env (STDecl (Ident var) tpTok exp) =
+    case expectType (typeToken tpTok) exp env of
+        Left err -> Left $ TypeCompileError err
+        Right (expTp, tpExp) -> undefined
+
 {-
 evalStm :: Env -> Stm -> State -> Either Exception State
 

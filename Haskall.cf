@@ -32,6 +32,7 @@ coercions Exp 5 ;
 
 FSUnTDec. FSDec ::= Ident "=" Exp ;
 FSTDec.   FSDec ::= Ident ":" Type "=" Exp ;
+FSAlias.  FSDec ::= Ident "~" Type ;
 separator FSDec "," ;
 
 TArgDec. ArgDec ::= Ident ":" Type ;
@@ -48,6 +49,7 @@ SIf.      Stm ::= "if" Exp "then" [Stm] "else" [Stm] "fi";
 SWhile.   Stm ::= "while" Exp "do" [Stm] "done" ;
 STPrint.  Stm ::= "print" Exp ;
 STDecl.   Stm1 ::= "var" Ident ":" Type "=" Exp ;
+STAlias.  Stm1 ::= "alias" Ident "=" Type ;
 SUnTDecl. Stm1 ::= "var" Ident "=" Exp ;
 SAssign.  Stm1 ::= Ident "=" Exp ;
 SPass.    Stm1 ::= "procrastinate" ;

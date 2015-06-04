@@ -1,9 +1,13 @@
 begin
+    alias I2I = (int) => int
 	var x = 10;
 	var y = 3;
 	var f = fun(x : int, y : int) : int = x + y;
 	var z = 0;
 	var c = 0
+	
+	var compose = fun (f1 : I2I, f2 : I2I) : I2I =
+	                fun(x: int) : int = f1(f2(x))
 	
 	if z == 0 then x = 5 else x = f(5,6) fi;
 	while c < 10 do

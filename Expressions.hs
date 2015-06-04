@@ -201,30 +201,30 @@ typeExp (ELet [] exp) env = case typeExp exp env of
     Right (expTp, tpExp) -> Right $ (expTp, ELet [] tpExp)
 
 typeExp (ELet (dh:decls) exp) env = let
-        typeDecl (FSUnTDec var varExp) =
+        typeDecl (FSUnTDec (Ident var) varExp) =
             case typeExp varExp env of
                 Left err -> Left err
                 Right (expTp, tpExp) ->
-                        Right $ FSTDec var (typeToToken expTp) tpExp
-        typeDecl (FSTDec var varTpt varExp) =
+                        Right $ (snd $ addToEnv var expTp env,
+                                FSTDec (Ident var) (typeToToken expTp) tpExp)
+        typeDecl (FSTDec (Ident var) varTpt varExp) =
             case lookupTypeDef env varTpt of
                 Left err -> Left err
                 Right varTp -> case expectType varTp varExp env of
                     Left err -> Left err
                     Right (expTp, tpExp) ->
-                            Right $ FSTDec var (typeToToken expTp) tpExp
+                        Right $ (snd $ addToEnv var expTp env,
+                                FSTDec (Ident var) (typeToToken expTp) tpExp)
+        typeDecl (FSAlias (Ident ntnm) tpt) = case lookupTypeDef env tpt of
+            Left err -> Left err
+            Right tp -> Right (addType ntnm tp env, FSAlias (Ident ntnm) tpt)
     in case typeDecl dh of
         Left err -> Left err
-        Right tpDecl -> let
-                (FSTDec (Ident var) varTpt varExp) = tpDecl
-            in case lookupTypeDef env varTpt of
+        Right (letEnv, tpDecl) ->
+            case typeExp (ELet decls exp) letEnv of
                 Left err -> Left err
-                Right varTp -> let
-                        (loc, letEnv) = addToEnv var varTp env
-                    in case typeExp (ELet decls exp) letEnv of
-                        Left err -> Left err
-                        Right (letTp, ELet fdecls fexp) ->
-                            Right $ (letTp, ELet (tpDecl:fdecls) fexp)
+                Right (letTp, ELet fdecls fexp) ->
+                    Right $ (letTp, ELet (tpDecl:fdecls) fexp)
 
 
 typeExp (EAdd e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
@@ -293,7 +293,10 @@ compExp env (ELet ((FSTDec (Ident var) tpt vexp):rest) exp) st =
             Right tp -> let
                     (newEnv, newSt) = createVar var tp env val st
                 in compExp newEnv (ELet rest exp) newSt
-
+compExp env (ELet ((FSAlias (Ident ntnm) tpt):rest) exp) st =
+    case lookupTypeDef env tpt of
+        Right tp -> compExp (addType ntnm tp env) (ELet rest exp) st
+    
 compExp env (ELet ((FSUnTDec (Ident var) vexp):rest) exp) st = undefined
 
 compExp env (EFunc decls tpt exp) st =

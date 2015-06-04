@@ -131,6 +131,8 @@ addToEnv var tp env = (nextKey env,
                           (insert var (nextKey env,tp) (keys env))
                           (types env))
 
+addType name tp env = Env (nextKey env) (keys env) (insert name tp (types env))
+
 -- STATE
 
 data State = State {

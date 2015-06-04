@@ -1,8 +1,9 @@
 let
+    I2I ~ (int) => int, ;; typedef
     f1 = fun(x : int) : int = x * 2,
     f2 = fun(x : int) : int = x + 4,
-    apply = fun(f : (int) => int, x : int ) : int = f(x),
-    ff = fun( f1 : (int) => int, f2 : (int) => int, x : int ) : int = 
+    apply = fun(f : I2I, x : int ) : int = f(x),
+    ff = fun( f1 : I2I, f2 : I2I, x : int ) : int = 
             iff 5 < x then f1(x) else f2(x),
     x = 0
 in ff( f1, f2, 6 )  ;; wynik: 12

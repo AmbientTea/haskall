@@ -106,6 +106,11 @@ compSt env (STPrint exp) = case typeExp exp env of
                         Right (IntVal int) -> Right $ pushToOut s $ show int)
         _ -> Left $ CannotPrintError tpExp expTp
 
+compSt env (STAlias (Ident ntpt) tpt) =
+    case lookupTypeDef env tpt of
+        Left err -> Left $ TypeCompileError err
+        Right tp -> Right (addType ntpt tp env, \s -> Right s)
+
 {-
 evalStm :: Env -> Stm -> State -> Either Exception State
 

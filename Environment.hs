@@ -45,6 +45,10 @@ typeToken TInt = IntType
 typeToken TBool = BoolType
 typeToken (TFunc types tp) = FuncType (map typeToken types) (typeToken tp)
 
+typeToToken IntType = TInt
+typeToToken BoolType = TBool
+typeToToken (FuncType args tp) = TFunc (map typeToToken args) (typeToToken tp)
+
 -- VALUES
 
 data Value =

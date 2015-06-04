@@ -6,8 +6,10 @@ import PrintHaskall
 import Data.Either
 import Data.List
 
+compileExpression :: Exp -> Env -> Either TypingError (State -> TryValue)
 compileExpression exp env = case typeExp exp env of
-        Right (expType, typedExp) -> Right $ compExp env exp
+        -- Right (expType, typedExp) -> Left $ TypingError $ (show expType) ++ " \n " ++ (printTree typedExp) ++ "\n" ++ (show typedExp)
+        Right (expType, typedExp) -> Right $ compExp env typedExp
         Left err -> Left err
 
 -- DECLARATIONS
@@ -23,6 +25,8 @@ addArguments (arg:rest) env st = let (newEnv, newSt) = addArgument arg env st
 argTypes args = map (\(TArgDec _ tp) -> typeToken tp) args
 argNames args = map (\(TArgDec (Ident arg) _) -> arg) args
 
+
+
 -- TYPING
 
 data TypingError = 
@@ -37,6 +41,7 @@ data TypingError =
     | EqTypingError Exp VType VType
     | NotAFunctionError Exp VType
     | FunctionTypeError Exp VType VType
+    | TypingError String
 
 instance Show TypingError where
     show (UnexpectedTypeError expT realT expr) =
@@ -68,6 +73,7 @@ instance Show TypingError where
     show (FunctionTypeError exp tp1 tp2) = "typing error: function " ++
         (printTree exp) ++ " declares type " ++ (show tp1) ++ " but has type "
         ++ (show tp2)
+    show (TypingError str) = "typing error: " ++ str
 
 expectType tp exp env = case typeExp exp env of
     Left err -> Left err
@@ -146,6 +152,31 @@ typeExp (Call funExp args) env = case typeExp funExp env of
                 else Left $ ArgumentTypingError args argTypes funExp (FuncType types retTp)
     Right (tp, exp) -> Left $ NotAFunctionError exp tp
 
+
+typeExp (ELet [] exp) env = case typeExp exp env of
+    Left err -> Left err
+    Right (expTp, tpExp) -> Right $ (expTp, ELet [] tpExp)
+
+typeExp (ELet (dh:decls) exp) env = let
+        typeDecl (FSUnTDec var varExp) =
+            case typeExp varExp env of
+                Left err -> Left err
+                Right (expTp, tpExp) ->
+                        Right $ FSTDec var (typeToToken expTp) tpExp
+        typeDecl (FSTDec var varTp varExp) =
+            case expectType (typeToken varTp) varExp env of
+                Left err -> Left err
+                Right (expTp, tpExp) ->
+                        Right $ FSTDec var (typeToToken expTp) tpExp
+    in case typeDecl dh of
+        Left err -> Left err
+        Right tpDecl -> let
+                (FSTDec (Ident var) varTP varExp) = tpDecl
+                letEnv = addToEnv var 0 (typeToken varTP) env
+            in case typeExp (ELet decls exp) letEnv of
+                Left err -> Left err
+                Right (letTp, ELet fdecls fexp) ->
+                    Right $ (letTp, ELet (tpDecl:fdecls) fexp)
 
 {-
 compExp env (EFunc decls tp exp) st = let
@@ -341,6 +372,8 @@ compExp env (ELet ((FSTDec (Ident var) tp vexp):rest) exp) st =
         Right val -> let
                 (newEnv, newSt) = createVar var (typeToken tp) env val st
             in compExp newEnv (ELet rest exp) newSt
+
+compExp env (ELet ((FSUnTDec (Ident var) vexp):rest) exp) st = undefined
 
 compExp env (EFunc decls tp exp) st = let
         (funEnv, funSt) = addArguments decls env st

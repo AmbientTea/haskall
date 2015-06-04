@@ -38,12 +38,12 @@ data TypingError =
     | ArgumentTypingError [Exp] [VType] Exp VType
     | AssignmentTypingError String VType Exp VType
     | NotDeclaredError String Env
-    
     | IfTypingError Exp VType VType
     | EqTypingError Exp VType VType
     | NotAFunctionError Exp VType
     | FunctionTypeError Exp VType VType
     | TypingError String
+    | AddTypeError Exp VType VType
 
 untype str = Left $ TypingError str
 
@@ -78,6 +78,9 @@ instance Show TypingError where
         (printTree exp) ++ " declares type " ++ (show tp1) ++ " but has type "
         ++ (show tp2)
     show (TypingError str) = "typing error: " ++ str
+    show (AddTypeError exp t1 t2) = "typing error: can not add values of " ++
+        "types " ++ (show t1) ++ " and " ++ (show t2) ++ " in expression " ++
+        (printTree exp)
 
 expectType tp exp env = case typeExp exp env of
     Left err -> Left err
@@ -177,7 +180,14 @@ typeExp (ELet (dh:decls) exp) env = let
                     Right $ (letTp, ELet (tpDecl:fdecls) fexp)
 
 
-typeExp (EAdd e1 e2) env = typeBoth e1 e2 IntType IntType IntType EAdd env
+typeExp (EAdd e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
+    (Left err,_) -> Left err
+    (_,Left err) -> Left err
+    (Right(tp1,te1), Right(tp2,te2)) -> case (tp1,tp2) of
+        (IntType,IntType) -> Right (IntType, EAdd te1 te2)
+        (StringType,StringType) -> Right (StringType, EAdd te1 te2)
+        _ -> Left $ AddTypeError (EAdd te1 te2) tp1 tp2
+
 typeExp (ESub e1 e2) env = typeBoth e1 e2 IntType IntType IntType ESub env
 typeExp (EMul e1 e2) env = typeBoth e1 e2 IntType IntType IntType EMul env
 typeExp (EDiv e1 e2) env = typeBoth e1 e2 IntType IntType IntType EDiv env

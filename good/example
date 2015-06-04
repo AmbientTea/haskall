@@ -18,5 +18,5 @@ begin
 	
 	if z == 100 then y = 42 else procrastinate fi
 	
-	print "printujemy\n"
+	print "printujemy " + "panowie"
 end

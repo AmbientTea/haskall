@@ -81,13 +81,15 @@ bool (BoolVal b) = b
 liftValOp :: (a->b->c) -> (Value->a) -> (Value->b) -> (c->Value) -> Value -> Value -> Value
 liftValOp f unp1 unp2 pck v1 v2 = pck $ f (unp1 v1) (unp2 v2)
 
-valAdd v1 v2 = Right (liftValOp (+) int int IntVal v1 v2)
 valMul v1 v2 = Right (liftValOp (*) int int IntVal v1 v2)
 valSub v1 v2 = Right (liftValOp (-) int int IntVal v1 v2)
 valDiv v1 v2 = case v2 of
     IntVal 0 -> Left ZeroDivisionException
     _ -> Right $ liftValOp (div) int int IntVal v1 v2
 
+valAdd v1 v2 = case (v1,v2) of
+    (IntVal i1, IntVal i2) -> Right $ IntVal $ i1 + i2
+    (StringVal s1, StringVal s2) -> Right $ StringVal $ s1 ++ s2
 
 valEq v1 v2 = case (v1,v2) of
     (IntVal i1, IntVal i2) -> Right $ BoolVal $ i1 == i2

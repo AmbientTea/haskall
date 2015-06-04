@@ -7,6 +7,7 @@ Prog. Program  ::= Stm ;
 TInt.  Type ::= "int" ;
 TBool. Type ::= "bool" ;
 TVoid. Type ::= "void" ;
+TString. Type ::= "string" ;
 TFunc. Type ::= "(" [Type] ")" "=>" Type ;
 
 separator Type ",";
@@ -26,6 +27,7 @@ EVar.    Exp4 ::= Ident ;
 EInt.    Exp4 ::= Integer ;
 ETrue.   Exp4 ::= "true" ;
 EFalse.  Exp4 ::= "false" ;
+EString. Exp4 ::= String ;
 EFunc.   Exp4 ::= "fun" "(" [ArgDec] ")" ":" Type "=" Exp ;
 ENFunc.  Exp4 ::= "fun" Ident "(" [ArgDec] ")" ":" Type "=" Exp ;
 
@@ -45,8 +47,9 @@ separator ArgDec "," ;
 separator  Stm ";" ;
 terminator Stm "" ;
 
-SIf.      Stm ::= "if" Exp "then" Stm1 "else" Stm1 "fi";
-SWhile.   Stm ::= "while" Exp "do" Stm1 "done" ;
+SIf.      Stm ::= "if" Exp "then" [Stm] "else" [Stm] "fi";
+SWhile.   Stm ::= "while" Exp "do" [Stm] "done" ;
+STPrint.  Stm ::= "print" Exp ;
 STDecl.   Stm1 ::= "var" Ident ":" Type "=" Exp ;
 SUnTDecl. Stm1 ::= "var" Ident "=" Exp ;
 SAssign.  Stm1 ::= Ident "=" Exp ;

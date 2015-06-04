@@ -118,6 +118,7 @@ typeExp (EEq e1 e2) env = case (typeExp e1 env, typeExp e2 env) of
     (Right (type1, exp1), Right (type2, exp2)) -> case (type1,type2) of
         (IntType,IntType)   -> Right (BoolType, EEq exp1 exp2)
         (BoolType,BoolType) -> Right (BoolType, EEq exp1 exp2)
+        (StringType,StringType) -> Right (StringType, EEq exp1 exp2)
         _ -> Left $ EqTypingError (EEq e1 e2) type1 type2
     (Left err, _) -> Left err
     (_, Left err) -> Left err
@@ -186,6 +187,7 @@ typeExp e env = Right $ case e of
     EFalse -> (BoolType, e)
     EInt i -> (IntType, e)
     EVar (Ident var) -> (getType var env, e)
+    EString str -> (StringType, EString str)
     
 
 
@@ -210,6 +212,7 @@ compExp :: Env -> Exp -> State -> TryValue
 compExp env (ETrue ) st = Right $ BoolVal True
 compExp env (EFalse) st = Right $ BoolVal False
 compExp env (EInt i) st = Right $ IntVal i
+compExp env (EString str) st = Right $ StringVal str
 
 compExp env (EAdd e1 e2) st = opComp env valAdd e1 e2 st
 compExp env (ESub e1 e2) st = opComp env valSub e1 e2 st

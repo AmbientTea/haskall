@@ -28,6 +28,7 @@ throw str = Left $ Exception str
 data VType =
     IntType
     | BoolType
+    | StringType
     | FuncType [VType] VType
     deriving (Eq, Ord)
 
@@ -36,17 +37,21 @@ instance Show VType where
     show BoolType = "bool"
     show (FuncType args tp) =
         "(" ++ (intercalate ", " $ map show args) ++ ") => " ++ (show tp)
+    show StringType = "string"
     
 typeValue (IntVal _)  = IntType
 typeValue (BoolVal _) = BoolType
+typeValue (StringVal _) = StringType
 typeValue (FunVal names types env st exp tp) = FuncType types tp
 
 typeToken TInt = IntType
 typeToken TBool = BoolType
+typeToken TString = StringType
 typeToken (TFunc types tp) = FuncType (map typeToken types) (typeToken tp)
 
 typeToToken IntType = TInt
 typeToToken BoolType = TBool
+typeToToken StringType = TString
 typeToToken (FuncType args tp) = TFunc (map typeToToken args) (typeToToken tp)
 
 -- VALUES
@@ -54,12 +59,14 @@ typeToToken (FuncType args tp) = TFunc (map typeToToken args) (typeToToken tp)
 data Value =
     IntVal Integer
     | BoolVal Bool
+    | StringVal String
     | FunVal [String] [VType] Env State Exp VType
     deriving (Eq, Ord)
 
 instance Show Value where
     show (IntVal i) = show i
     show (BoolVal b) = show b
+    show (StringVal str) = str
     show (FunVal args types env st exp tp) =
         "fun (" ++ (intercalate ", " args) ++ ") = " ++ (printTree exp)
 
@@ -85,14 +92,13 @@ valDiv v1 v2 = case v2 of
 valEq v1 v2 = case (v1,v2) of
     (IntVal i1, IntVal i2) -> Right $ BoolVal $ i1 == i2
     (BoolVal b1, BoolVal b2) -> Right $ BoolVal $ b1 == b2
+    (StringVal s1, StringVal s2) -> Right $ BoolVal $ s1 == s2
 
 valLt v1 v2 = Right $ liftValOp (<) int int BoolVal v1 v2
 
 -- ENVIRONMENT
 
 type EnvElem = (Integer, VType)
-
-
 
 data Env = Env {
     nextKey :: Integer,
@@ -121,7 +127,8 @@ addToEnv var tp env =
 -- STATE
 
 data State = State {
-    store :: Map Integer Value
+    store :: Map Integer Value,
+    output :: String
     } deriving (Eq, Ord)
 
 instance Show State where
@@ -129,14 +136,16 @@ instance Show State where
         (\(k,v) -> (show k) ++ " : " ++ (show v))
         $ toList $ store s)
 
-emptyState = State empty
+emptyState = State empty ""
 
 lookupStore loc st = Data.Map.lookup loc (store st)
 getFromStore loc st = fromJust $ lookupStore loc st
 
-addEmptyToStore loc st = State (store st)
+addEmptyToStore loc st = State (store st) (output st)
 
-setInStore val loc st = State (insert loc val (store st))
+setInStore val loc st = State (insert loc val (store st)) (output st)
+
+pushToOut st str = State (store st) (str ++ output st)
 
 ------------------------
 

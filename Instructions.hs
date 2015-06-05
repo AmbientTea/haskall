@@ -1,6 +1,7 @@
 module Instructions where
 import AbsHaskall
 import Expressions
+import PrintHaskall
 import Environment
 
 type Prog = State -> Either Exception State
@@ -11,10 +12,25 @@ data CompileError =
     | BadAssignment String VType Exp VType
     | BadLoopCondition Exp VType
     | CannotPrintError Exp VType
-    | CannotReadError String VType
+    | UndefinedProcError String Env
+    | ProcArgTypesError String [VType] [VType]
 
 instance Show CompileError where
-    show (TypeCompileError err) = show err
+    show (TypeCompileError err) = (show err)
+    show (VarNotDeclared name env) = "compile error: variable " ++ name ++ 
+        " is not defined in env:\n" ++ (show env)
+    show (BadAssignment var tp exp expTp) = "compile error: cannot assign " ++
+        "value of expression " ++ (printTree exp) ++ " of type " ++ (show tp)
+        ++ " to variable " ++ var ++ " of type " ++ (show tp)
+    show (BadLoopCondition exp tp) = "expression " ++ (printTree exp) ++
+        " of type " ++ (show tp) ++ " cannot be a condition"
+    show (CannotPrintError exp tp) = "compile error: cannot print expression"
+        ++ (printTree exp) ++ " of type " ++ (show tp)
+    show (UndefinedProcError pr env) = "compile error: cannot call undefined "
+        ++ "procedure " ++ pr ++ " in env:\n" ++ (show env)
+    show (ProcArgTypesError pr expTps actTps) = "compile error: cannot " ++
+        "apply arguments of types " ++ (show actTps) ++ " to procedure " ++
+        pr ++ " expecting types " ++ (show expTps)
 
 compileProgram pr env = compSt env pr
 
@@ -92,8 +108,8 @@ compSt env (SIf exp stms1 stms2) = case typeExp exp env of
             (Right (_,pr1), Right (_,pr2)) ->
                     Right (env, \s -> case compExp env tpExp s of
                         Left err -> Left err
-                        Right (BoolVal False) -> pr1 s
-                        Right (BoolVal True ) -> pr2 s)
+                        Right (BoolVal True ) -> pr1 s
+                        Right (BoolVal False) -> pr2 s)
 
 compSt env (STPrint exp) = case typeExp exp env of
     Left err -> Left $ TypeCompileError err
@@ -111,45 +127,32 @@ compSt env (STAlias (Ident ntpt) tpt) =
         Left err -> Left $ TypeCompileError err
         Right tp -> Right (addType ntpt tp env, \s -> Right s)
 
-{-
-evalStm :: Env -> Stm -> State -> Either Exception State
+compSt env (SProcDecl (Ident id) argts stm exp) =
+    case argTypes env argts of
+        Left err -> Left $ TypeCompileError err
+        Right tps -> case addArguments argts env of
+            Left err -> Left $ TypeCompileError err
+            Right procEnv -> case compSt procEnv stm of
+                Left err -> Left err
+                Right (retEnv,cont) -> case typeExp exp env of
+                    Left err -> Left $ TypeCompileError err
+                    Right (expTp, tpExp) -> let -- case compExp env tpExp of
+                            proc = Proc tps (argNames argts) cont (compExp retEnv tpExp) procEnv
+                        in Right (addProc id proc env, \s -> Right s)
 
-evalStm en SPass s = Right s
-evalStm en (SAssign (Ident var) exp) s = case eval exp en s of
-    Left err -> Left err
-    Right val -> setVar var en val s
-
-evalStm en (SIf exp stm1 stm2) s = case typeExp exp en of
-    Left err -> Left err
-    Right t -> if t /= BoolType
-        then Left $ ConditionException exp t
-        else case eval exp en s of
-            Left err -> Left err
-            Right val -> case val of
-                BoolVal True  -> evalStm en stm1 s
-                BoolVal False -> evalStm en stm2 s
-
-evalStm en (SWhile exp stm) s = case typeExp exp en of
-    Left err -> Left err
-    Right t -> if t /= BoolType
-        then Left $ ConditionException exp t
-        else case eval exp en s of
-            Left err -> Left err
-            Right val -> case val of
-                BoolVal True  -> case evalStm en stm s of
+compSt env (SProcRun (Ident id) exps) = case typeExpList exps env of
+    Left err -> Left $ TypeCompileError err
+    Right tps -> let (argTypes,tpArgs) = unzip tps in
+        case lookupProc id env of
+            Nothing -> Left $ UndefinedProcError id env
+            Just proc -> if (pArgTypes proc) /= argTypes
+                then Left $ ProcArgTypesError id (pArgTypes proc) argTypes
+                else Right (env, \s -> case compExpList (pEnv proc) exps s of
                     Left err -> Left err
-                    Right s2 -> evalStm en (SWhile exp stm) s2
-                BoolVal False -> Right s
+                    Right vals -> let
+                            newSt = StackedState emptyState s
+                            runSt = setValues (zip (pArgNames proc) vals) (pEnv proc) newSt
+                        in case pCont proc $ runSt of
+                            Left err -> Left err
+                            Right (StackedState top bot) -> Right bot )
 
-evalStm en (SBlock decls stms) s = case evalDeclList decls en s of
-    Left err -> Left err
-    Right (ne, ns) -> evalStmList ne stms ns
-
-
-evalStmList :: Env -> [Stm] -> State -> Either Exception State
-evalStmList en [] s = Right s
-evalStmList en (h:t) s = case evalStm en h s of
-    Left err -> Left err
-    Right s2 -> evalStmList en t s2
-
--}

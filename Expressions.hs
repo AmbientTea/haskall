@@ -265,6 +265,17 @@ opComp :: Env -> Operator -> Exp -> Exp -> State -> TryValue
 opComp env op e1 e2 st =
     unpackApply op (compExp env e1 st) (compExp env e2 st)
 
+compExpList env exps = let
+        compdL = map (compExp env) exps
+        runList [] s = Right []
+        runList (f:rest) s = case f s of
+            Left err -> Left err
+            Right v  -> case runList rest s of
+                Left err -> Left err
+                Right vs -> Right $ v:vs
+    in runList compdL
+
+
 compExp :: Env -> Exp -> State -> TryValue
 compExp env (ETrue ) st = Right $ BoolVal True
 compExp env (EFalse) st = Right $ BoolVal False

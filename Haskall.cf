@@ -51,6 +51,8 @@ STPrint.  Stm ::= "print" Exp ;
 STDecl.   Stm1 ::= "var" Ident ":" Type "=" Exp ;
 STAlias.  Stm1 ::= "alias" Ident "=" Type ;
 SUnTDecl. Stm1 ::= "var" Ident "=" Exp ;
+SProcDecl.Stm1 ::= "procedure" Ident "(" [ArgDec] ")" Stm "return" Exp ;
+SProcRun. Stm1 ::= Ident "(" [Exp] ")" ;
 SAssign.  Stm1 ::= Ident "=" Exp ;
 SPass.    Stm1 ::= "procrastinate" ;
 SBlock.   Stm2 ::= "begin" [Stm] "end" ;

@@ -12,14 +12,15 @@ data Exception =
     Exception String
     | NestedException Exception String
     | ZeroDivisionException
-    | UninitializedException String
+    | UninitializedException String Env State
 
 instance Show Exception where
     show (Exception mess) = "exception : " ++ mess
     show (NestedException ex mess) = mess ++ ", caused by: " ++ (show ex)
     show (ZeroDivisionException) = "division by 0"
-    show (UninitializedException var) = "variable " ++ var ++ " accessed but "
-        ++ "not initialized"
+    show (UninitializedException var env st) = "variable " ++ var ++
+        " accessed but " ++ "not initialized in env:\n" ++ (show env) ++ "\n"
+        ++ (show st)
 
 throw str = Left $ Exception str
 
@@ -103,15 +104,17 @@ valLt v1 v2 = Right $ liftValOp (<) int int BoolVal v1 v2
 
 type EnvElem = (Integer, VType)
 
+type Prog = State -> IO (Either Exception State)
+
 data Procedure = Proc {
         pArgTypes :: [VType],
         pArgNames :: [String],
-        pCont :: State -> Either Exception State,
+        pCont :: Prog,
         pRet :: State -> TryValue,
         pEnv :: Env
     }
 instance Show Procedure where
-    show p = "proc " ++ (show $ pArgTypes p)
+    show p = "proc " ++ (show $ pArgTypes p) ++ " {" ++ (show $ pEnv p) ++ "}\n"
 
 data Env = Env {
     nextKey :: Integer,
@@ -122,7 +125,7 @@ data Env = Env {
 
 instance Show Env where
     show env = let
-            inShow (name, (pos, tp)) = name ++ " : " ++ (show tp)
+            inShow (name, (pos, tp)) = "[" ++ (show pos) ++ "]" ++ name ++ " : " ++ (show tp)
             varL = intercalate "\n" $ map inShow $ toList $ keys env
             procsShow (name, proc) = name ++ " : " ++ (show proc)
             procL = intercalate "\n" $ map procsShow $ toList $ procs env
@@ -152,47 +155,48 @@ lookupProc name env = Data.Map.lookup name (procs env)
 -- STATE
 
 data State = State {
-    store :: Map Integer Value,
-    output :: String
+    store :: Map Integer Value
     }
     | StackedState {
         topState :: State,
         restState :: State
-    } deriving Show
+    }
+instance Show State where
+    show (StackedState top bot) = (show top) ++ "\n----\n" ++ (show bot)
+    show (State stor) = let
+            showPair (loc, val) = (show loc) ++ ": " ++ (show val)
+            lines = intercalate "\n" $ map showPair $ toList stor
+        in "store:\n" ++ lines
 
-emptyState = State empty ""
+emptyState = State empty
 
-lookupStore loc (State stor _) = Data.Map.lookup loc stor
+lookupStore loc (State stor) = Data.Map.lookup loc stor
 lookupStore loc (StackedState top bot) = case lookupStore loc top of
     Just v -> Just v
     Nothing -> lookupStore loc bot
 
 getFromStore loc st = fromJust $ lookupStore loc st
 
-setInStore val loc (State stor out) = State (insert loc val stor) out
+setInStore val loc (State stor) = State (insert loc val stor)
 setInStore val loc (StackedState top bot) =
     case lookupStore loc top of
         Just _ -> StackedState (setInStore val loc top) bot
         Nothing -> StackedState top (setInStore val loc bot)
 
-addToStore val loc (State stor out) = State (insert loc val stor) out
+addToStore val loc (State stor) = State (insert loc val stor)
 addToStore val loc (StackedState top bot) = StackedState (addToStore val loc top) bot
-
-
-pushToOut (State stor out) str = State stor (out ++ str)
-pushToOut (StackedState top bot) str =
-    StackedState top (pushToOut bot str)
 
 ------------------------
 
-lookupVarValue var env st = fmap (flip lookupStore $ st) (lookupLoc var env)
+lookupVarValue :: String -> Env -> State -> Maybe Value
+lookupVarValue var env st = (lookupLoc var env) >>= (flip lookupStore $ st)
+-- lookupVarValue var env st = lookupStore (getLoc var env) st
 
 createEmptyVar :: String -> VType -> Env -> Env
 createEmptyVar var tp env = let
         (loc, newEnv) = addToEnv var tp env
     in newEnv
 
-getVarValue var env st = getFromStore (getLoc var env) st
 setVarValue var env val st = setInStore val (getLoc var env) st
 
 setValues :: [(String,Value)] -> Env -> State -> State

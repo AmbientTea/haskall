@@ -15,19 +15,22 @@ import Instructions
 
 import Data.Map (empty)
 
+parseIt :: String -> IO ()
 parseIt input = case pProgram $ myLexer input of
-    Bad err -> err
+    Bad err -> putStrLn $ show err
     Ok prog -> case prog of
         Eval exp -> case compileExpression exp emptyEnv of
             Right v -> case v emptyState of
-                Left err -> show err
-                Right v -> show v
-            Left er -> show er
+                Left err -> putStrLn $ show err
+                Right v -> putStrLn $ show v
+            Left er -> putStrLn $ show er
         Prog stm -> case compileProgram stm emptyEnv of
-            Right (_,v) -> case v emptyState of
-                Left err -> show err
-                Right s  -> output s
-            Left er -> show er
+            Right (_,v) -> do
+                result <- v emptyState
+                case result of
+                    Left err -> putStrLn $ show err
+                    Right _  -> return ()
+            Left er -> putStrLn $ show er
 
 main :: IO ()
 main = do
@@ -35,5 +38,5 @@ main = do
     input <- case args of
         [] -> getContents
         f:_ -> readFile f
-    putStrLn $ parseIt input
+    parseIt input
     return ()

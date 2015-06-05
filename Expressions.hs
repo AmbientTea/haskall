@@ -239,11 +239,14 @@ typeExp (ESub e1 e2) env = typeBoth e1 e2 IntType IntType IntType ESub env
 typeExp (EMul e1 e2) env = typeBoth e1 e2 IntType IntType IntType EMul env
 typeExp (EDiv e1 e2) env = typeBoth e1 e2 IntType IntType IntType EDiv env
 
+typeExp (EVar (Ident var)) env = case lookupType var env of
+    Nothing -> Left $ NotDeclaredError var env
+    Just tp -> Right (tp,(EVar (Ident var)))
+
 typeExp e env = Right $ case e of
     ETrue  -> (BoolType, e)
     EFalse -> (BoolType, e)
     EInt i -> (IntType, e)
-    EVar (Ident var) -> (getType var env, e)
     EString str -> (StringType, EString str)
     
 
@@ -294,7 +297,9 @@ compExp env (EIf e1 e2 e3) st = case compExp env e1 st of
     Right (BoolVal True)  -> compExp env e2 st
     Right (BoolVal False) -> compExp env e3 st
 
-compExp env (EVar (Ident var)) st = Right $ getVarValue var env st
+compExp env (EVar (Ident var)) st = case lookupVarValue var env st of
+    Nothing -> Left $ UninitializedException var env st
+    Just v -> Right v
 
 compExp env (ELet [] exp) st = compExp env exp st
 compExp env (ELet ((FSTDec (Ident var) tpt vexp):rest) exp) st =

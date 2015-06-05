@@ -171,7 +171,13 @@ getFromStore loc st = fromJust $ lookupStore loc st
 
 setInStore val loc (State stor out) = State (insert loc val stor) out
 setInStore val loc (StackedState top bot) =
-    StackedState (setInStore val loc top) bot
+    case lookupStore loc top of
+        Just _ -> StackedState (setInStore val loc top) bot
+        Nothing -> StackedState top (setInStore val loc bot)
+
+addToStore val loc (State stor out) = State (insert loc val stor) out
+addToStore val loc (StackedState top bot) = StackedState (addToStore val loc top) bot
+
 
 pushToOut (State stor out) str = State stor (out ++ str)
 pushToOut (StackedState top bot) str =

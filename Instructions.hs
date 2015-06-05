@@ -70,7 +70,7 @@ compSt env (STDecl (Ident var) tpTok exp) =
                     (loc,newEnv) = addToEnv var expTp env
                 in Right (newEnv, \s -> case compExp newEnv tpExp s of
                     Left err -> Left err
-                    Right v -> Right $ setInStore v loc s)
+                    Right v -> Right $ addToStore v loc s)
 
 compSt env (SUnTDecl (Ident var) exp) =
     case typeExp exp env of
@@ -79,7 +79,7 @@ compSt env (SUnTDecl (Ident var) exp) =
                 (loc,newEnv) = addToEnv var expTp env
             in Right (newEnv, \s -> case compExp newEnv tpExp s of
                 Left err -> Left err
-                Right v -> Right $ setInStore v loc s)
+                Right v -> Right $ addToStore v loc s)
 
 compSt env (SBlock stmts) = evalStmList env stmts
 
@@ -150,8 +150,8 @@ compSt env (SProcRun (Ident id) exps) = case typeExpList exps env of
                 else Right (env, \s -> case compExpList (pEnv proc) exps s of
                     Left err -> Left err
                     Right vals -> let
-                            newSt = StackedState emptyState s
-                            runSt = setValues (zip (pArgNames proc) vals) (pEnv proc) newSt
+                            newSt = setValues (zip (pArgNames proc) vals) (pEnv proc) emptyState
+                            runSt = StackedState newSt s
                         in case pCont proc $ runSt of
                             Left err -> Left err
                             Right (StackedState top bot) -> Right bot )

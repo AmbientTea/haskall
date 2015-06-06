@@ -5,14 +5,25 @@ Interpreter obsługuje czytanie z pliku oraz ze standardowego wejścia:
     ./interpreter file
     ./interpreter < file
 
+Wejście:
+Interpreter przyjmuje dwa rodzaje wejścia:
+    + wyrażenie do obliczenia, dla którego wypisuje wartość
+    + instrukcję(dowolną, ale najwięcej sensu robi oczywiście blok), którą
+      wykonuje, dokonując odpowiedniego IO
+
 Krótki opis języka:
 
 Język stanowi luźne połączenie języków imperatywnych w stylu pascala z językami
-funkcyjnymi(dlatego nazywa się haskall). Funkcje w języku są czyste (nie
-zmieniają stanu) i traktowane są jako zwyczajne wartości, w szczególności mogą
-być podawane jako argumenty innych funkcji. 
+funkcyjnymi(dlatego nazywa się haskall).
 
-Obsługiwane typy to int oraz ból + wszystkie typy funkcyjne, które można na
+Funkcje vs. procedury
+
+Funkcje w języku są czyste (nie zmieniają stanu) i traktowane są jako zwyczajne
+wartości, w szczególności mogą być podawane i zwracane jako argumenty innych
+funkcji. W przeciwieństwie do nich procedury stanowią część środowiska i mogą
+dokonywać zmian srodowkiska.
+
+Obsługiwane typy to unit, int, ból, string + wszystkie typy funkcyjne, które można na
 ich podstawie zbudować.
 
 Język posiada standardowe funkcyjne konstrukcje z wyrażeń:
@@ -26,27 +37,30 @@ Funkcje rekurencyjne tworzone są poprzez nazwalne lambdy:
 gdzie expr może zawierać odwołania do f
 
 Z konstrukcji imperatywnych zaimplementowane zostały:
-    + bloki, podzielone na sekcję deklaracji oraz sekcję poleceń, pascal-style
+    + bloki
+    + deklaracje zmiennych i procedur dowolnie przeplatane z innymi instrukcjami
     + if-then-else-fi
     + while-do-done
     + przypisania do zmiennych
     + instrukcja pusta "procrastinate"
+    + wywolania procedur
+    + wypisywanie wartosci
 
 Deklaracje zmiennych w blokach i wyrażeniach let-in nie wymagają jawnego podania
 typów( typy są wnioskowane ), ale po nazwie zmiennej może nastąpić sygnatura
     var [: type]
 która zostanie sprawdzona.
 
+Ponadto zaimplementowane zostały:
+    + dodawanie/konkatenacja stringów
+    + typedefy / aliasy postaci:
+        - imperatywnie: alias [nazwa] = [typ]
+        - funkcyjnie w let-in: [nazwa] ~ [typ]
+
 Komentarze mają postać jednolinijkową
     ;; komentarz
 lub wielo:
     <; komentarz ;>
 
-Wejście:
-Interpreter przyjmuje dwa rodzaje wejścia:
-    + wyrażenie do obliczenia, dla którego wypisuje wartość
-    + instrukcję(dowolną, ale najwięcej sensu robi oczywiście blok), dla której
-      wypisuje stan końcowy
-
 Zapożyczenia:
-Gramatyka w dużej mierze zapożyczona z gramatyki c-- z tutoriala dla bnfc.
+Gramatyka zapożyczona z gramatyki c-- z tutoriala dla bnfc i znacznie przerobiona.

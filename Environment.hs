@@ -27,13 +27,15 @@ throw str = Left $ Exception str
 -- TYPES
 
 data VType =
-    IntType
+    UnitType
+    | IntType
     | BoolType
     | StringType
     | FuncType [VType] VType
     deriving (Eq, Ord)
 
 inbuiltTypes = fromList [
+        ("unit", UnitType),
         ("int", IntType),
         ("bool", BoolType),
         ("string", StringType)
@@ -45,13 +47,16 @@ instance Show VType where
     show (FuncType args tp) =
         "(" ++ (intercalate ", " $ map show args) ++ ") => " ++ (show tp)
     show StringType = "string"
+    show UnitType = "unit"
     
+typeValue UnitVal = UnitType
 typeValue (IntVal _)  = IntType
 typeValue (BoolVal _) = BoolType
 typeValue (StringVal _) = StringType
 typeValue (FunVal names types env st exp tp) = FuncType types tp
 
 typeToToken :: VType -> Type
+typeToToken UnitType = TType (Ident "unit")
 typeToToken IntType = TType (Ident "int")
 typeToToken BoolType = TType (Ident "bool")
 typeToToken StringType = TType (Ident "string")
@@ -60,12 +65,14 @@ typeToToken (FuncType args tp) = TFunc (map typeToToken args) (typeToToken tp)
 -- VALUES
 
 data Value =
-    IntVal Integer
+    UnitVal
+    | IntVal Integer
     | BoolVal Bool
     | StringVal String
     | FunVal [String] [VType] Env State Exp VType
 
 instance Show Value where
+    show UnitVal = "unit"
     show (IntVal i) = show i
     show (BoolVal b) = show b
     show (StringVal str) = str
@@ -111,7 +118,8 @@ data Procedure = Proc {
         pArgNames :: [String],
         pCont :: Prog,
         pRet :: State -> TryValue,
-        pEnv :: Env
+        pEnv :: Env,
+        pRetType :: VType
     }
 instance Show Procedure where
     show p = "proc " ++ (show $ pArgTypes p) ++ " {" ++ (show $ pEnv p) ++ "}\n"

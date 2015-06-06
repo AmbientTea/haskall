@@ -9,6 +9,7 @@ data CompileError =
     TypeCompileError TypingError
     | VarNotDeclared String Env
     | BadAssignment String VType Exp VType
+    | BadPrAssignment String VType String VType
     | BadLoopCondition Exp VType
     | CannotPrintError Exp VType
     | UndefinedProcError String Env
@@ -137,7 +138,7 @@ compSt env (SProcDecl (Ident id) argts stm exp) =
                 Right (retEnv,cont) -> case typeExp exp env of
                     Left err -> Left $ TypeCompileError err
                     Right (expTp, tpExp) -> let -- case compExp env tpExp of
-                            proc = Proc tps (argNames argts) cont (compExp retEnv tpExp) procEnv
+                            proc = Proc tps (argNames argts) cont (compExp retEnv tpExp) procEnv expTp
                         in Right (addProc id proc env, \s -> return $ Right s)
 
 compSt env (SProcRun (Ident id) exps) = case typeExpList exps env of
@@ -157,6 +158,31 @@ compSt env (SProcRun (Ident id) exps) = case typeExpList exps env of
                             case s1 of
                                 Left err -> return $ Left err
                                 Right (StackedState top bot) -> return $ Right bot )
+
+compSt env (SPrAssign (Ident var) (Ident id) exps) = case lookupEnv var env of
+    Nothing -> Left $ VarNotDeclared var env
+    Just (loc, varTp) -> case typeExpList exps env of
+        Left err -> Left $ TypeCompileError err
+        Right tps -> let (argTypes,tpArgs) = unzip tps in
+            case lookupProc id env of
+                Nothing -> Left $ UndefinedProcError id env
+                Just proc -> if (pArgTypes proc) /= argTypes
+                    then Left $ ProcArgTypesError id (pArgTypes proc) argTypes
+                    else if (pRetType proc) /= varTp
+                        then Left $ BadPrAssignment var varTp id (pRetType proc)
+                        else Right (env, \s -> case compExpList env exps s of
+                            Left err -> return $ Left err
+                            Right vals -> let
+                                    newSt = setValues (zip (pArgNames proc) vals) (pEnv proc) emptyState
+                                    runSt = StackedState newSt s
+                                in do
+                                    s1 <- pCont proc runSt
+                                    return $ case s1 of
+                                        Left err -> Left err
+                                        Right (StackedState top bot) ->
+                                            case pRet proc (StackedState top bot) of
+                                                Left err -> Left err
+                                                Right v -> Right $ setInStore v loc bot)    
 
 
 -- XXX XXX XXX debug

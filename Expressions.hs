@@ -248,6 +248,7 @@ typeExp e env = Right $ case e of
     EFalse -> (BoolType, e)
     EInt i -> (IntType, e)
     EString str -> (StringType, EString str)
+    EUnit -> (UnitType, EUnit)
     
 
 
@@ -280,6 +281,7 @@ compExpList env exps = let
 
 
 compExp :: Env -> Exp -> State -> TryValue
+compExp env (EUnit ) st = Right $ UnitVal
 compExp env (ETrue ) st = Right $ BoolVal True
 compExp env (EFalse) st = Right $ BoolVal False
 compExp env (EInt i) st = Right $ IntVal i

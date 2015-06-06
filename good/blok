@@ -1,5 +1,0 @@
-begin
-    var i = 0;
-    var x = 3;
-    var s = i + x;
-end

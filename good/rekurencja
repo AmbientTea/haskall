@@ -1,8 +1,0 @@
-let
-    fibb = fun fibb(n : int) : int =
-        iff n == 0 then 0 else (
-            iff n == 1 then 1 else
-                fibb(n-1) + fibb(n-2)
-        )
-in
-    fibb(7)

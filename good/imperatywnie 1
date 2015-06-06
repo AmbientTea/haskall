@@ -1,0 +1,34 @@
+begin
+    ;; type alias / typedef
+    alias I2I = (int) => int
+    
+    ;; typowanie zmiennej f jest opcjonalne
+    var f : I2I = fun(x: int) : int = 2 * x
+    
+    ;; interpreter domysla sie typow i ustala je przed faza interpretacji
+    var x = 0
+    var y = 4
+    var napis = "dzien dobry\n"
+    
+    ;; stala tt jest jedyna wartoscia typu unit
+    var k : unit = tt
+    
+    ;; procedury przyjmuja dowolnie wiele argumentows
+    procedure wypisz(x: int, n2: string) begin
+        print x;
+        print n2
+        var y = x
+        x = x + 1000 ;; x zostaje przesloniety i nie zmienia sie na zewnatrz
+    end return y+1 ;; kazda procedura zwraca wartosc jakiegos wyrazenia
+    
+    procedure przywitajSie() begin
+        print iff 1 == 1 then napis else "" ;; print przyjmuje dowolne wyrazenie
+    end return tt ;; procedury bez wyniku moga zwrocic unit
+    
+    przywitajSie() ;; procedure mozemy wywolac
+    while x < f(y) do
+        ;; lub wywolac i pobrac jej wartosc
+        x <- wypisz(x, "\n")
+    done
+    print ("do " + "widzenia" + "\n");; konkatenacja stringow
+end

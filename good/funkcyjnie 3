@@ -1,0 +1,15 @@
+let
+    ;; lambdy moga posiadac swoje uzytkowe nazwy (niezwiazane z nazwa zmiennej)
+    ;; nazwane lambdy pozwalaja stosowac rekurencje:
+    fibb = fun fibb(n : int) : int =
+        iff n == 0 then 0 else (
+            iff n == 1 then 1 else
+                fibb(n-1) + fibb(n-2)
+        ),
+    
+    ;; dozwolona jest korekursja:
+    f = fun f(x: int) : int = let
+            g = fun g(x: int) : int = iff 0 < x then f(x-1) else f(0)
+        in (iff 0 < x then g(x) else 0)
+in
+    fibb(7) + f(10) ;; 13

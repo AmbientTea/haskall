@@ -1,26 +1,20 @@
 begin
+    ;; type alias / typedef
     alias I2I = (int) => int
-	var x = 10;
-	var y = 3;
-	var f = fun(x : int, y : int) : int = x + y;
-	var z = 0;
-	var c = 0
-	
-	var compose = fun (f1 : I2I, f2 : I2I) : I2I =
-	                fun(x: int) : int = f1(f2(x))
-	
-	if z == 0 then x = 5 else x = f(5,6) fi;
-	while c < 10 do
-	        var c2 = 0;
-	        
-	        c = c+1
-	        while c2 < 10 do
-                z = z+1
-                c2 = c2+1
-            done
-	done;
-	
-	if z == 100 then y = 42 else procrastinate fi
-	
-	print "printujemy " + "panowie"
+    var f : I2I = fun(x: int) : int = 2 * x
+    var x = 0
+    var y = 4
+    
+    procedure wypisz(x: int) begin
+        print x;
+        print "\n"
+        x = x + 1000 ;; x zostaje przesloniety
+    end return 1
+    
+    
+    while x < (f(y)) do
+        wypisz(x)
+        x = x+1
+    done
+    
 end

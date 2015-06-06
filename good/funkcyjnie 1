@@ -1,0 +1,17 @@
+let
+    ;; typedef w srodku let
+    I2I ~ (int) => int,
+    
+    ;; w odroznieniu od procedur funkcje sa wartosciami tworzonymi poprzez
+    ;; wyrazenia lambda
+    f1 = fun(x : int) : int = x * 2,
+    f2 = fun(x : int) : int = x + 4,
+    
+    ;; funkcje moga byc wiec argumentami innych funkcji
+    apply = fun(f : I2I, x : int ) : int = f(x),
+    ff = fun( f1 : I2I, f2 : I2I, x : int ) : int = 
+            iff 5 < x then f1(x) else f2(x),
+    
+    ;; wywolac mozna dowolne wyrazenie zwracajace funkcje
+    x = (iff f1(10) < f2(10) then f1 else f1)(4)
+in ff( f1, f2, 6 ) + x  ;; wynik: 20

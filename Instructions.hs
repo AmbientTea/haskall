@@ -14,6 +14,7 @@ data CompileError =
     | CannotPrintError Exp VType
     | UndefinedProcError String Env
     | ProcArgTypesError String [VType] [VType]
+    | TypeAlreadyDeclaredError String
 
 instance Show CompileError where
     show (TypeCompileError err) = (show err)
@@ -31,6 +32,8 @@ instance Show CompileError where
     show (ProcArgTypesError pr expTps actTps) = "compile error: cannot " ++
         "apply arguments of types " ++ (show actTps) ++ " to procedure " ++
         pr ++ " expecting types " ++ (show expTps)
+    show (TypeAlreadyDeclaredError tp) = "compile error: type " ++ tp ++ "is "
+        ++ "already declared"
 
 compileProgram pr env = compSt env pr
 
@@ -52,6 +55,11 @@ evalStmList env (stm:stmRest) = case compSt env stm of
 compSt :: Env -> Stm -> Either CompileError (Env,Prog)
 compSt env SPass = Right (env, \s -> return $ Right s)
 compSt env (SBlock stmts) = evalStmList env stmts
+-- debug
+compSt env STrace = Right (env, \s -> do
+    putStrLn (show env)
+    putStrLn (show s)
+    return $ Right s)
 compSt env (STPrint exp) = case typeExp exp env of
     Left err -> Left $ TypeCompileError err
     Right (expTp, tpExp) -> case expTp of
@@ -184,11 +192,40 @@ compSt env (SPrAssign (Ident var) (Ident id) exps) = case lookupEnv var env of
                                                 Left err -> Left err
                                                 Right v -> Right $ setInStore v loc bot)    
 
+compSt env (STDef (Ident tpName) cons) =
+    case lookupTypeDef env (TType (Ident tpName)) of
+        Right _ -> Left $ TypeAlreadyDeclaredError tpName
+        Left _ -> case produceConstrs env cons of
+            Left err -> Left $ TypeCompileError err
+            Right constrs -> let
+                    tp = AlgType tpName constrs
+                    consFuns = map (constrToFun tp) constrs
+                    consNames = map (\(Constr n _) -> n) constrs
+                    consTypes = map(\(Constr _ tps) -> FuncType tps tp) constrs
+                    envWithT = addType tpName tp env
+                    envWithC = createEmptyVars (zip consNames consTypes) envWithT
+                in Right (envWithC, \s ->
+                    return $ Right $ setValues (zip consNames consFuns) envWithC s)
 
--- XXX XXX XXX debug
+--------------------------------------------------------
 
-compSt env STrace = Right (env, \s -> do
-    putStrLn (show env)
-    putStrLn (show s)
-    return $ Right s)
+produceTypeList env [] = Right []
+produceTypeList env (tpt:rest) = case lookupTypeDef env tpt of
+    Left err -> Left err
+    Right tp -> case produceTypeList env rest of
+        Left err -> Left err
+        Right tps -> Right $ tp:tps
+
+produceConstr env (TConstr (Ident name) types) =
+    case produceTypeList env types of
+        Left err -> Left err
+        Right tps -> Right $ Constr name tps
+
+produceConstrs env [] = Right []
+produceConstrs env (c:rest) =
+    case produceConstr env c of
+        Left err -> Left err
+        Right cn -> case produceConstrs env rest of
+            Left err -> Left err
+            Right cns -> Right $ cn : cns 
 

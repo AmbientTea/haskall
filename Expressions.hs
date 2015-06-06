@@ -321,7 +321,11 @@ compExp env (EFunc decls tpt exp) st =
     case lookupTypeDef env tpt of
         Right tp -> case addArguments decls env of
             Right funEnv -> case argTypes env decls of
-                Right argTps -> Right $ FunVal (argNames decls) argTps funEnv st exp tp
+                Right argTps -> Right $ FunVal argTps funF tp where
+                    funF vals = let
+                            runSt = setValues (zip (argNames decls) vals)
+                                                funEnv st
+                        in compExp funEnv exp runSt
 
 compExp env (ENFunc (Ident fun) decls tpt exp) st =
     case lookupTypeDef env tpt of
@@ -334,63 +338,11 @@ compExp env (ENFunc (Ident fun) decls tpt exp) st =
                 in funVal
 
 compExp env (Call fexp exps) st = case compExp env fexp st of
-    Right (FunVal args types funEnv funSt body tp) -> let
+    Right (FunVal types cont tp) -> let
             argVals = map (\arg -> unright $ compExp env arg st) exps
-            runSt = setValues (zip args argVals) funEnv funSt
-        in compExp funEnv body runSt
+        in cont argVals
             
         
-
-{-
-eval :: Exp -> Env -> State -> Either Exception Value
-eval e en s = undefined
-
-
-        EFunc decls tp exp -> if not $ allTyped decls
-            then Left $ UntypedArgumentException e
-            else case topExpType of
-                Right (FuncType _ tp) -> let
-                        (names, types) = evalTDecList decls
-                    in Right $ FunVal names types en s exp tp
-                    
-                    
-        ENFunc (Ident fun) decls tp exp -> if not $ allTyped decls
-            then Left $ UntypedArgumentException e
-            else case topExpType of
-                Right (FuncType _ tp) -> let
-                        (names, types) = evalTDecList decls
-                        (fenv,fst1) = createVar fun (FuncType types tp) en s
-                        funVal = let
-                                fst2 = case setVar fun fenv funVal fst1 of
-                                    Right fst -> fst
-                            in FunVal names types fenv fst2 exp tp
-                    in Right $ funVal
-                       -- throw $ show fenv
-        Call (Ident fun) exps -> case getVar fun en s of
-            Left err -> Left err
-            Right (FunVal names types fenv fst fexp ftp) ->
-                case evalList exps en s of
-                    Left err -> Left err
-                    Right vals -> let
-                            (funEnv, funSt) = createVars (names, types) fenv fst
-                        in case setVars (zip names vals) funEnv funSt of
-                            Left err -> Left err
-                            Right funSt2 -> eval fexp funEnv funSt2
-            Right _ -> Left $ Exception ("something horrible happened and" ++
-                         "now i need to uninstall haskell")
-
-
-evalList :: [Exp] -> Env -> State -> Either Exception [Value]
-evalList [] _ _ = Right []
-evalList (h:t) en st = case eval h en st of
-    Left err -> Left err 
-    Right val -> case evalList t en st of
-        Left err -> Left err
-        Right lst -> Right (val:lst)
-
--}
-
-
 
 
 

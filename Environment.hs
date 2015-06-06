@@ -25,6 +25,7 @@ instance Show Exception where
 throw str = Left $ Exception str
 
 -- TYPES
+data Constr = Constr String [VType] deriving (Eq, Ord)
 
 data VType =
     UnitType
@@ -32,6 +33,7 @@ data VType =
     | BoolType
     | StringType
     | FuncType [VType] VType
+    | AlgType String [Constr]
     deriving (Eq, Ord)
 
 inbuiltTypes = fromList [
@@ -48,12 +50,7 @@ instance Show VType where
         "(" ++ (intercalate ", " $ map show args) ++ ") => " ++ (show tp)
     show StringType = "string"
     show UnitType = "unit"
-    
-typeValue UnitVal = UnitType
-typeValue (IntVal _)  = IntType
-typeValue (BoolVal _) = BoolType
-typeValue (StringVal _) = StringType
-typeValue (FunVal names types env st exp tp) = FuncType types tp
+    show (AlgType name _) = name
 
 typeToToken :: VType -> Type
 typeToToken UnitType = TType (Ident "unit")
@@ -61,6 +58,11 @@ typeToToken IntType = TType (Ident "int")
 typeToToken BoolType = TType (Ident "bool")
 typeToToken StringType = TType (Ident "string")
 typeToToken (FuncType args tp) = TFunc (map typeToToken args) (typeToToken tp)
+typeToToken (AlgType name _) = TType (Ident name)
+
+--FunVal [String] [VType] Env State Exp VType
+constrToFun tp (Constr name types) = FunVal types cont tp where
+    cont args = Right $  AlgVal (Constr name types) args
 
 -- VALUES
 
@@ -69,15 +71,17 @@ data Value =
     | IntVal Integer
     | BoolVal Bool
     | StringVal String
-    | FunVal [String] [VType] Env State Exp VType
+    | FunVal [VType] ([Value] -> TryValue) VType
+    | AlgVal Constr [Value]
 
 instance Show Value where
     show UnitVal = "unit"
     show (IntVal i) = show i
     show (BoolVal b) = show b
     show (StringVal str) = str
-    show (FunVal args types env st exp tp) =
-        "fun (" ++ (intercalate ", " args) ++ ") = " ++ (printTree exp)
+    show (FunVal types cont tp) =
+        "function"
+    show (AlgVal (Constr name _) values) = name ++ (show values)
 
 type TryValue = Either Exception Value
 type Operator = Value -> Value -> TryValue
@@ -204,6 +208,10 @@ createEmptyVar :: String -> VType -> Env -> Env
 createEmptyVar var tp env = let
         (loc, newEnv) = addToEnv var tp env
     in newEnv
+
+createEmptyVars [] env = env
+createEmptyVars ((var,tp):rest) env =
+    createEmptyVars rest (createEmptyVar var tp env)
 
 setVarValue var env val st = setInStore val (getLoc var env) st
 

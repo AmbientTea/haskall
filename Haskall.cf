@@ -40,6 +40,8 @@ TArgDec. ArgDec ::= Ident ":" Type ;
 separator ArgDec "," ;
 
 
+TConstr. TConstr ::= Ident "(" [Type] ")" ;
+separator TConstr "|" ;
 
 
 
@@ -52,6 +54,7 @@ STPrint.  Stm ::= "print" Exp ;
 STDecl.   Stm1 ::= "var" Ident ":" Type "=" Exp ;
 SUnTDecl. Stm1 ::= "var" Ident "=" Exp ;
 STAlias.  Stm1 ::= "alias" Ident "=" Type ;
+STDef.    Stm1 ::= "type" Ident "=" [TConstr] ;
 STrace.   Stm1 ::= "trace" ;
 SProcDecl.Stm1 ::= "procedure" Ident "(" [ArgDec] ")" Stm "return" Exp ;
 SProcRun. Stm1 ::= Ident "(" [Exp] ")" ;

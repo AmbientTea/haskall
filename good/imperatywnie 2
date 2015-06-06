@@ -1,0 +1,12 @@
+begin
+    ;; deklaracja typu algebraicznego dodaje typ t do srodowisk
+    ;; oraz tworzy konstruktory jako funkcje 
+    type t = cons1(int) | cons2(bool)
+    var f = fun(x: t) : bool = true
+    
+    var x = cons1(4)
+    var y = cons2(false)
+    
+    ;; x i y maja ten sam typ
+    var z = iff f(x) then f(y) else false
+end

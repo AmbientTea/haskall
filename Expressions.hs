@@ -75,6 +75,8 @@ data TypingError =
     | TypingError String
     | AddTypeError Exp VType VType
     | UnknownType String
+    | NotMatchable VType
+    | NoSuchConstructor String
 
 untype str = Left $ TypingError str
 
@@ -113,6 +115,16 @@ instance Show TypingError where
         "types " ++ (show t1) ++ " and " ++ (show t2) ++ " in expression " ++
         (printTree exp)
     show (UnknownType tp) = "typing error: unknown type " ++ (show tp)
+    show (NotMatchable tp) = "typing error: type " ++ (show tp) ++ " is not"
+        ++ "matchable"
+    show (NoSuchConstructor nm) = "typing error: constructor " ++ nm ++ "not found"
+
+mapWithExc _ [] = Right []
+mapWithExc f (e:rest) = case f e of
+    Left err -> Left err
+    Right ef -> case mapWithExc f rest of
+        Left err -> Left err
+        Right efs -> Right $ ef : efs
 
 expectType tp exp env = case typeExp exp env of
     Left err -> Left err
@@ -132,9 +144,46 @@ typeExpList exps env = let types = map (flip typeExp env) exps in
         [] -> Right $ rights types
         lst -> Left $ head lst
 
+
+foldPats env [] = Right env
+foldPats env ((t,pat):rest) = case typePat t pat env of
+    Left err -> Left err
+    Right penv -> foldPats penv rest
+
+typePat :: VType -> Pattern -> Env -> Either TypingError Env
+typePat tp PDef env = Right env
+typePat tp (PVar (Ident var)) env = Right $ snd $ addToEnv var tp env
+typePat (AlgType tpn constrs) (PCon (Ident cons) pats) env =
+    case filter (\(Constr nm _) -> nm == cons) constrs of
+        [] -> Left $ NoSuchConstructor cons
+        (Constr nm types):_ -> foldPats env (zip types pats)
+            
+typePat tp _ _ = Left $ NotMatchable tp
+
+typeProd tpi tpf (Prod pat exp) env = case typePat tpi pat env of
+    Left err -> Left err
+    Right patEnv -> case expectType tpf exp patEnv of
+        Left err -> Left err
+        Right (expTp, tpExp) -> Right $ Prod pat tpExp
+
+typeProds tpi tpf [] env = Right []
+typeProds tpi tpf (pr:rest) env = case typeProd tpi tpf pr env of
+    Left err -> Left err
+    Right prf -> case typeProds tpi tpf rest env of
+        Left err -> Left err
+        Right prfs -> Right $ prf:prfs
+
 -- check whether expression types properly in env and returns the type and
 -- full-typed version of this expression
 typeExp :: Exp -> Env -> Either TypingError (VType,Exp)
+
+typeExp (EMatch exp tpt prods) env = case typeExp exp env of
+    Left err -> Left err
+    Right (expTp, tpExp) -> case lookupTypeDef env tpt of
+        Left err -> Left err
+        Right tpf -> case typeProds expTp tpf prods env of
+            Left err -> Left err
+            Right prodsf -> Right (tpf, EMatch tpExp tpt prodsf)
 
 typeExp (EIf cond e1 e2) env = case typeExp cond env of
     Left err -> Left err
@@ -338,18 +387,37 @@ compExp env (ENFunc (Ident fun) decls tpt exp) st =
                 in funVal
 
 compExp env (Call fexp exps) st = case compExp env fexp st of
+    Left err -> Left err
     Right (FunVal types cont tp) -> let
             argVals = map (\arg -> unright $ compExp env arg st) exps
         in cont argVals
             
-        
+compExp env (EMatch exp tpt prods) st = let
+        expTp = fst $ unright $ typeExp exp env
+        tp = unright $ lookupTypeDef env tpt
+    in case compExp env exp st of
+        Left err -> Left err
+        Right val -> matchProds expTp env val prods st
+
+matchProds tp env val [] st = Left CannotMatchException
+matchProds tp env val (Prod pat exp:rest) st = case compPat tp env pat val st of
+    Nothing -> matchProds tp env val rest st
+    Just (newEnv,newSt) -> compExp newEnv exp newSt
+
+-- compPat tp env pat val st = error $ (show tp) ++ (show pat) ++ (show val)
+compPat tp env PDef val st = Just (env,st)
+compPat tp env (PVar (Ident var)) val st = Just $ createVar var tp env val st
+compPat (AlgType _ constrs) env (PCon (Ident cname) pats) (AlgVal (Constr pname _) vals) st =
+    if pname /= cname
+        then Nothing
+        else case filter (\(Constr n _) -> n == cname) constrs of
+                (Constr _ types):_ -> foldCompPats env (zip3 types pats vals) st
 
 
-
-
-
-
-
+foldCompPats env [] st = Just (env,st)
+foldCompPats env ((tp,pat,val):rest) st = case compPat tp env pat val st of
+    Nothing -> Nothing
+    Just (newEnv,newSt) -> foldCompPats newEnv rest newSt
 
 
 

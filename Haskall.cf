@@ -13,6 +13,7 @@ separator Exp "," ;
 
 EIf.     Exp  ::= "iff" Exp1 "then" Exp1 "else" Exp1 ;
 ELet.    Exp  ::= "let" [FSDec] "in" Exp1 ;
+EMatch.  Exp  ::= "match" Exp1 "to" Type "with" [Prod] "end" ;
 EEq.     Exp1 ::= Exp1 "==" Exp1 ;
 ELt.     Exp1 ::= Exp1 "<"  Exp1 ;
 EAdd.    Exp2 ::= Exp2 "+" Exp3 ;
@@ -30,6 +31,18 @@ EFunc.   Exp4 ::= "fun" "(" [ArgDec] ")" ":" Type "=" Exp ;
 ENFunc.  Exp4 ::= "fun" Ident "(" [ArgDec] ")" ":" Type "=" Exp ;
 
 coercions Exp 5 ;
+
+PDef. Pattern ::= "_" ;
+PVar. Pattern ::= Ident ;
+PCon. Pattern ::= Ident "(" [Pattern] ")" ;
+
+separator Pattern "," ;
+
+
+
+Prod. Prod ::= Pattern "->" Exp ;
+separator Prod "|";
+
 
 FSUnTDec. FSDec ::= Ident "=" Exp ;
 FSTDec.   FSDec ::= Ident ":" Type "=" Exp ;

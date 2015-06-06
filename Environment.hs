@@ -13,6 +13,7 @@ data Exception =
     | NestedException Exception String
     | ZeroDivisionException
     | UninitializedException String Env State
+    | CannotMatchException
 
 instance Show Exception where
     show (Exception mess) = "exception : " ++ mess
@@ -21,11 +22,12 @@ instance Show Exception where
     show (UninitializedException var env st) = "variable " ++ var ++
         " accessed but " ++ "not initialized in env:\n" ++ (show env) ++ "\n"
         ++ (show st)
+    show CannotMatchException = "exception: incomplete patter match"
 
 throw str = Left $ Exception str
 
 -- TYPES
-data Constr = Constr String [VType] deriving (Eq, Ord)
+data Constr = Constr String [VType] deriving (Show, Eq, Ord)
 
 data VType =
     UnitType

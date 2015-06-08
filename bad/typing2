@@ -1,5 +1,20 @@
-let
-    var apply = fun( f: (int) => int, x : int ) : int = f(x),
-    var f = fun( b : bool ) : int = iff b then 1 else 0
-in
-    apply(f, true)
+;; nieistniejacy konstruktor
+begin
+    type t = t(int) | k(bool)
+    var x = k(true)
+    
+    print match x to int with
+          s(y,z) -> 9
+        | _ -> 8
+        end
+end
+
+;; typ nie posiadajacy konstruktorow
+begin
+    type t = t(int) | k(bool)
+    
+    print match 5 to int with
+        ;; typ nie posiada konstruktorow
+        t(x) -> 8
+        end
+end

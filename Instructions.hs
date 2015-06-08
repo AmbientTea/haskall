@@ -25,7 +25,7 @@ instance Show CompileError where
         ++ " to variable " ++ var ++ " of type " ++ (show tp)
     show (BadLoopCondition exp tp) = "expression " ++ (printTree exp) ++
         " of type " ++ (show tp) ++ " cannot be a condition"
-    show (CannotPrintError exp tp) = "compile error: cannot print expression"
+    show (CannotPrintError exp tp) = "compile error: cannot print expression "
         ++ (printTree exp) ++ " of type " ++ (show tp)
     show (UndefinedProcError pr env) = "compile error: cannot call undefined "
         ++ "procedure " ++ pr ++ " in env:\n" ++ (show env)
@@ -34,6 +34,9 @@ instance Show CompileError where
         pr ++ " expecting types " ++ (show expTps)
     show (TypeAlreadyDeclaredError tp) = "compile error: type " ++ tp ++ "is "
         ++ "already declared"
+    show (BadPrAssignment var varTp id pRetType) = "compile error: cannot " ++
+        "assign value of procedure " ++ id ++ " of type " ++ (show pRetType) ++
+        " to variable " ++ var ++ " of type " ++ (show varTp)
 
 compileProgram pr env = compSt env pr
 
@@ -82,7 +85,7 @@ compSt env (STDecl (Ident var) tpTok exp) =
             Left err -> Left $ TypeCompileError err
             Right (expTp, tpExp) -> let
                     (loc,newEnv) = addToEnv var expTp env
-                in Right (newEnv, \s -> return $ case compExp newEnv tpExp s of
+                in Right (newEnv, \s -> return $ case compExp env tpExp s of
                     Left err -> Left err
                     Right v -> Right $ addToStore v loc s)
 
@@ -91,7 +94,7 @@ compSt env (SUnTDecl (Ident var) exp) =
         Left err -> Left $ TypeCompileError err
         Right (expTp, tpExp) -> let
                 (loc,newEnv) = addToEnv var expTp env
-            in Right (newEnv, \s -> return $ case compExp newEnv tpExp s of
+            in Right (newEnv, \s -> return $ case compExp env tpExp s of
                 Left err -> Left err
                 Right v -> Right $ addToStore v loc s)
 

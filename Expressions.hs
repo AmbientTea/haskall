@@ -64,7 +64,6 @@ argNames args = map (\(TArgDec (Ident arg) _) -> arg) args
 data TypingError = 
     UnexpectedTypeError VType VType Exp
     | ConditionTypingError Exp VType
-    | UntypedArgumentError Exp
     | ArgumentTypingError [Exp] [VType] Exp VType
     | AssignmentTypingError String VType Exp VType
     | NotDeclaredError String Env
@@ -85,11 +84,8 @@ instance Show TypingError where
         "typing error: expected type " ++ (show expT) ++ " but expression " ++
         (printTree expr) ++ " has type " ++ (show realT)
     show (ConditionTypingError exp tp) = 
-        "typing error: expression " ++ (printTree exp) ++ " of type " ++
-        (show tp) ++ " as condition in if/loop"
-    show (UntypedArgumentError exp) =
-        "typing error: untyped arguments in function " ++ (printTree exp) ++
-        " are now allowed"
+        "typing error: expression of type " ++
+        (show tp) ++ " as condition in expression: " ++ (printTree exp)
     show (ArgumentTypingError args types fun tp) =
         "cannot apply arguments " ++ (intercalate ", " $ map printTree args)
         ++ " of types " ++ (intercalate ", " $ map show types) ++
@@ -116,8 +112,9 @@ instance Show TypingError where
         (printTree exp)
     show (UnknownType tp) = "typing error: unknown type " ++ (show tp)
     show (NotMatchable tp) = "typing error: type " ++ (show tp) ++ " is not"
-        ++ "matchable"
-    show (NoSuchConstructor nm) = "typing error: constructor " ++ nm ++ "not found"
+        ++ "matchable in this context"
+    show (NoSuchConstructor nm) = "typing error: constructor " ++ nm ++
+        " not found"
 
 mapWithExc _ [] = Right []
 mapWithExc f (e:rest) = case f e of

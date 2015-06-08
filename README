@@ -21,14 +21,14 @@ Funkcje vs. procedury
 Funkcje w języku są czyste (nie zmieniają stanu) i traktowane są jako zwyczajne
 wartości, w szczególności mogą być podawane i zwracane jako argumenty innych
 funkcji. W przeciwieństwie do nich procedury stanowią część środowiska i mogą
-dokonywać zmian srodowkiska.
+dokonywać zmian stanu.
 
-Obsługiwane typy to unit, int, ból, string + wszystkie typy funkcyjne, które można na
-ich podstawie zbudować.
+Obsługiwane typy to unit, int, ból, string oraz nierekurencyjne typy z wieloma konstruktorami + wszystkie typy funkcyjne, które można na ich podstawie zbudować.
 
 Język posiada standardowe funkcyjne konstrukcje z wyrażeń:
     + iff-then-else
     + let-in
+    + pattern matching
 
 Wszystkie funkcje tworzone są w postaci wieloargumentowych wyrażeń lamda:
     fun([arg : type]) : type = expression
@@ -43,19 +43,44 @@ Z konstrukcji imperatywnych zaimplementowane zostały:
     + while-do-done
     + przypisania do zmiennych
     + instrukcja pusta "procrastinate"
+    + procedury nierekurencyjne
     + wywolania procedur
     + wypisywanie wartosci
 
 Deklaracje zmiennych w blokach i wyrażeniach let-in nie wymagają jawnego podania
 typów( typy są wnioskowane ), ale po nazwie zmiennej może nastąpić sygnatura
     var [: type]
-która zostanie sprawdzona.
+która zostanie sprawdzona. Deklaracje moga występować w dowolnym miejscu w
+bloku.
+
+Procedury deklarowane sa w postaci:
+    procedure [nazwa]([argument : typ]*) [instrukcja / blok] return [wyrazenie]
+i mogą być wywołane w dwojaki sposob:
+    procedura(argumenty)
+    zmienna <- procedura(argumenty)
+Procedury nie moga być wywoływane w wyrażeniach (zmieniałyby one wtedy stan).
 
 Ponadto zaimplementowane zostały:
     + dodawanie/konkatenacja stringów
     + typedefy / aliasy postaci:
         - imperatywnie: alias [nazwa] = [typ]
         - funkcyjnie w let-in: [nazwa] ~ [typ]
+    + polecenie "debugujace" trace, wypisujace stan oraz srodowisko
+
+Fazy interpretacji / wykonania:
+Wyrażenia:
+    + faza typowania sprawdza oraz wyprowadza typy i zwraca dobrze typowane
+      wyrazenie lub blad
+    + faza "kompilacji" zaklada wejscie juz poprawnie ztypowane i przeprowadza
+      wyrazenie w funkcje ze stanu do wartosci lub bledu
+Instrukcje:
+    + 1 faza przeprowadza instrukcje w funkcje ze stanu do wyjatku lub
+      io/stanu lub zgłasza błąd.
+Wykonanie:
+    + rozpoczyna się dopiero, kiedy cały program zostanie poprawnie
+      zinterpretowany.
+    + Możliwe błędy w czasie wykonania skutkuja zwroceniem i wypisaniem wyjatku
+      (definiowanego przez interpreter, nie haskellowego).
 
 Komentarze mają postać jednolinijkową
     ;; komentarz

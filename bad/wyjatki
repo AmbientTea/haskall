@@ -1,0 +1,12 @@
+;; dzielenie przez zero
+let
+    x = 5,
+    y = 0
+in x / y
+
+;; niepelny match
+begin
+    type t = c1(int) | c2(int, bool)
+    var x = c2(5, true)
+    var y = match x to int with c1(x) -> x end
+end

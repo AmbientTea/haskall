@@ -18,7 +18,7 @@ data Exception =
 instance Show Exception where
     show (Exception mess) = "exception : " ++ mess
     show (NestedException ex mess) = mess ++ ", caused by: " ++ (show ex)
-    show (ZeroDivisionException) = "division by 0"
+    show (ZeroDivisionException) = "exception: division by 0"
     show (UninitializedException var env st) = "variable " ++ var ++
         " accessed but " ++ "not initialized in env:\n" ++ (show env) ++ "\n"
         ++ (show st)

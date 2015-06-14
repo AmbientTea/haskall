@@ -14,8 +14,10 @@ separator Exp "," ;
 EIf.     Exp  ::= "iff" Exp1 "then" Exp1 "else" Exp1 ;
 ELet.    Exp  ::= "let" [FSDec] "in" Exp1 ;
 EMatch.  Exp  ::= "match" Exp1 "to" Type "with" [Prod] "end" ;
-EEq.     Exp1 ::= Exp1 "==" Exp1 ;
-ELt.     Exp1 ::= Exp1 "<"  Exp1 ;
+EFunc.   Exp ::= "fun" "(" [ArgDec] ")" ":" Type "=" Exp ;
+ENFunc.  Exp ::= "fun" Ident "(" [ArgDec] ")" ":" Type "=" Exp ;
+EEq.     Exp1 ::= Exp1 "==" Exp2 ;
+ELt.     Exp1 ::= Exp1 "<"  Exp2 ;
 EAdd.    Exp2 ::= Exp2 "+" Exp3 ;
 ESub.    Exp2 ::= Exp2 "-" Exp3 ;
 EMul.    Exp3 ::= Exp3 "*" Exp4 ;
@@ -27,8 +29,6 @@ ETrue.   Exp4 ::= "true" ;
 EFalse.  Exp4 ::= "false" ;
 EUnit.   Exp4 ::= "tt" ;
 EString. Exp4 ::= String ;
-EFunc.   Exp4 ::= "fun" "(" [ArgDec] ")" ":" Type "=" Exp ;
-ENFunc.  Exp4 ::= "fun" Ident "(" [ArgDec] ")" ":" Type "=" Exp ;
 
 coercions Exp 5 ;
 
@@ -59,7 +59,6 @@ separator TConstr "|" ;
 
 
 separator  Stm ";" ;
-terminator Stm "" ;
 
 SIf.      Stm ::= "if" Exp "then" [Stm] "else" [Stm] "fi";
 SWhile.   Stm ::= "while" Exp "do" [Stm] "done" ;

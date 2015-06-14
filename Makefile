@@ -3,7 +3,7 @@ all: parser
 
 parser:
 	bnfc Haskall.cf
-	happy -gca ParHaskall.y
+	happy -gca --info ParHaskall.y
 	alex -g LexHaskall.x
     
 

@@ -1,0 +1,6 @@
+;; zly argument while/if
+begin
+    while "true" do
+        print "to twoje radyo"
+    done
+end

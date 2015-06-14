@@ -1,0 +1,5 @@
+;; redefinicja typu
+begin
+    type t = t(int);
+    type t = t(bool)
+end

@@ -1,0 +1,6 @@
+;; niepoprawne argumenty
+let
+    apply = fun( f: (int) => int, x : int ) : int = f(x),
+    f = fun( b : bool ) : int = iff b then 1 else 0
+in
+    apply(f, true)

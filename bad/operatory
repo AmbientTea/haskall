@@ -1,0 +1,13 @@
+;; zle porownania / operacje
+9 == "napis"
+;; tak samo dla:
+;; 9 + "napis"
+;; 5 - true
+
+
+
+
+
+
+
+

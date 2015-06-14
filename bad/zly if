@@ -1,0 +1,2 @@
+;; brak zgodnosci typow w ifie
+iff true then "napis" else 1

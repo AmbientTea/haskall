@@ -1,0 +1,11 @@
+begin
+    var x = 1;
+    var y = "napis";
+    procedure p(x:int) begin
+        print "dobry dzien"
+    end return tt;
+    
+    x <- p(true, 9) ;; zle argumenty
+end
+
+

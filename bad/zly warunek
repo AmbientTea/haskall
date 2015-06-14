@@ -1,0 +1,2 @@
+;; nie-bool w warunkach
+iff 4 + 5 then 4 else 8

@@ -1,0 +1,5 @@
+;; zly print
+begin
+    type t = t();
+    print t()
+end

@@ -1,0 +1,2 @@
+;; zly typ funkcji
+fun(x: int) : bool = x

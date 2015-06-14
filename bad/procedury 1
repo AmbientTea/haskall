@@ -1,0 +1,11 @@
+begin
+    var x = 1;
+    var y = "napis";
+    procedure p(x:int) begin
+        print "dobry dzien"
+    end return tt;
+    
+    y <- p(0) ;; zle przypisanie
+end
+
+

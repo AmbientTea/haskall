@@ -1,0 +1,5 @@
+;; dzielenie przez zero
+let
+    x = 5,
+    y = 0
+in x / y

@@ -1,0 +1,30 @@
+begin
+    ;; typy moga posiadac wiele konstruktorow
+    ;; ale nie sa rekurencyjne ani polimorficzne
+    type t = t(int)
+    type maybeT = some(t) | none()
+    
+    ;; istnieja podstawowe matche do zmiennej i pusty
+    var k = match 5 to int with
+          x -> x+1
+        | _ -> 0
+        end
+    print k
+    print "\n"
+    
+    ;; mozna matchowac po konstruktorach
+    var m : int = match t(4) to int with
+        t(x) -> x 
+        end
+    print m
+    print "\n"
+    
+    var s = some( t(7) )
+    print "s = "
+    print match s to int with
+          none() -> 0
+          ;; dowolnie zagniezdzone matche sa rowniez obslugiwane
+        | some(t(x)) -> x
+        end
+    print "\n"
+end

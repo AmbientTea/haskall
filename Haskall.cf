@@ -13,7 +13,7 @@ separator Exp "," ;
 
 EIf.     Exp  ::= "iff" Exp1 "then" Exp1 "else" Exp1 ;
 ELet.    Exp  ::= "let" [FSDec] "in" Exp1 ;
-EMatch.  Exp  ::= "match" Exp1 "to" Type "with" [Prod] "end" ;
+EMatch.  Exp  ::= "match" Exp1 "to" Type "with" [PProd] "end" ;
 EFunc.   Exp ::= "fun" "(" [ArgDec] ")" ":" Type "=" Exp ;
 ENFunc.  Exp ::= "fun" Ident "(" [ArgDec] ")" ":" Type "=" Exp ;
 EEq.     Exp1 ::= Exp1 "==" Exp2 ;
@@ -40,8 +40,8 @@ separator Pattern "," ;
 
 
 
-Prod. Prod ::= Pattern "->" Exp ;
-separator Prod "|";
+Prod. PProd ::= Pattern "->" Exp ;
+separator PProd "|";
 
 
 FSUnTDec. FSDec ::= Ident "=" Exp ;
@@ -53,8 +53,8 @@ TArgDec. ArgDec ::= Ident ":" Type ;
 separator ArgDec "," ;
 
 
-TConstr. TConstr ::= Ident "(" [Type] ")" ;
-separator TConstr "|" ;
+TConstr. TTConstr ::= Ident "(" [Type] ")" ;
+separator TTConstr "|" ;
 
 
 
@@ -66,7 +66,7 @@ STPrint.  Stm ::= "print" Exp ;
 STDecl.   Stm1 ::= "var" Ident ":" Type "=" Exp ;
 SUnTDecl. Stm1 ::= "var" Ident "=" Exp ;
 STAlias.  Stm1 ::= "alias" Ident "=" Type ;
-STDef.    Stm1 ::= "type" Ident "=" [TConstr] ;
+STDef.    Stm1 ::= "type" Ident "=" [TTConstr] ;
 STrace.   Stm1 ::= "trace" ;
 SProcDecl.Stm1 ::= "procedure" Ident "(" [ArgDec] ")" Stm "return" Exp ;
 SProcRun. Stm1 ::= Ident "(" [Exp] ")" ;
@@ -75,7 +75,8 @@ SPrAssign.Stm1 ::= Ident "<-" Ident "(" [Exp] ")" ;
 SPass.    Stm1 ::= "procrastinate" ;
 SBlock.   Stm2 ::= "begin" [Stm] "end" ;
 
-coercions Stm 2 ;
+_. Stm ::= Stm1 ;
+_. Stm1 ::= Stm2 ;
 
 
 
